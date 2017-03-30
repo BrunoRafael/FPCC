@@ -29,7 +29,6 @@ gastos_nordeste <- gastos_filter %>%
   mutate(txtDescricao = ifelse(txtDescricao == "Emissão Bilhete Aéreo",
                   "PASSAGENS AÉREAS", 
                   txtDescricao)) 
-<<<<<<< HEAD
 # Test data
 # Verify negative vlrLiquido values
 gastos_nordeste %>% 
@@ -38,9 +37,6 @@ gastos_nordeste %>%
   filter(vlrLiquido <= 0) %>%
   arrange(vlrLiquido) %>% View()
   
-=======
-
->>>>>>> 41b5e7655295113678fcb664d48d7c1db05e537f
 ## R Markdown
 
 This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.

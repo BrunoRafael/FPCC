@@ -12,9 +12,11 @@ View(gastos)
 gastos_filter <- gastos %>% select(sgPartido, 
                                   txtCNPJCPF,
                                   sgUF,
+                                  nuLegislatura,
                                   txNomeParlamentar,
                                   txtDescricao,
-                                  nuLegislatura,
+                                  numAno,
+                                  numMes,
                                   vlrLiquido) %>% 
   filter(!txNomeParlamentar %in% unique(sgPartido))
 
@@ -26,14 +28,12 @@ gastos_nordeste <- gastos_filter %>%
                                "PASSAGENS AÉREAS", 
                                txtDescricao))
 
-
+#quantas notas fiscais foram emitidas por cada estado
 gastos_nordeste %>% select(txNomeParlamentar, sgUF) %>% 
   unique() %>%
   ggplot(mapping=aes(x = sgUF)) + 
   geom_histogram(stat = "count") +
   geom_rug(alpha = 0.7)
-
-
 
 # Total gasto por cada parlamentar em todos os seus mandatos
 gastos_filter %>% group_by(txNomeParlamentar) %>%
@@ -119,5 +119,62 @@ gastos_nordeste %>%
   geom_histogram(stat = "identity") +
   ggtitle("Histograma Preços de Imóveis") + # adiciona título
   coord_flip()
-  
+
+gastos_nordeste %>% filter(numMes%%1 == 0) %>% View()
+
+gastos_nordeste %>% group_by(txNomeParlamentar, txtDescricao, numMes, numAno) %>%
+  summarise(total = sum(vlrLiquido))
+ggplot(mapping=aes(x = sgUF)) + 
+  geom_histogram(stat = "count") +
+  geom_rug(alpha = 0.7)
+
+gastos_nordeste %>% group_by(txNomeParlamentar, numMes, numAno) %>%
+  summarise(total = sum(vlrLiquido)) %>%
+  ggplot(aes(numMes, total)) + 
+  geom_point()
+
+gastos_nordeste %>% group_by(txtDescricao, numMes, numAno) %>%
+  summarise(total = sum(vlrLiquido)/1000000) %>%
+  ggplot(aes(numMes, total)) +
+  geom_point(position = position_jitter(width = 0.3, height = 0), size = 2, alpha = 0.5)+
+  labs(y = "Total gasto (Em milhões R$)")
+
+gastos_nordeste %>% group_by(txtDescricao, numMes, numAno) %>%
+  summarise(total = sum(vlrLiquido)/1000000) %>%
+  ggplot(aes(numMes, total)) +
+  geom_point(position = position_jitter(width = 0.3, height = 0), size = 2, alpha = 0.5)+
+  labs(y = "Total gasto (Em milhões R$)")
+# gastos mensais de cada tipo de despesa
+gastos_nordeste %>% 
+  select(txtDescricao, numMes, numAno, vlrLiquido)%>%
+  group_by(txtDescricao, numMes, numAno) %>%
+  summarise(total = sum(vlrLiquido)/1000000) %>%
+  filter(total == max(total), numAno == 2016) %>% 
+  arrange(-numMes, numAno) %>%
+  ggplot(aes(numMes, total)) +
+  geom_point(position = position_jitter(width = 0.2, height = 0), size = 2, alpha = 0.5)+
+  labs(y = "Total gasto (Em milhões R$)")
+
+gastos_nordeste %>% 
+  select(txtDescricao, numMes, numAno, vlrLiquido)%>%
+  group_by(txtDescricao, numMes, numAno) %>%
+  summarise(total = sum(vlrLiquido)/1000000) %>%
+  filter(total == max(total), numAno == 2017) %>% 
+  arrange(-numMes, numAno) %>%
+  ggplot(aes(numMes, total)) +
+  geom_point(position = position_jitter(width = 0.2, height = 0), size = 2, alpha = 0.5)+
+  labs(y = "Total gasto (Em milhões R$)")
+
+gastos_nordeste %>% 
+  select(txtDescricao, numMes, numAno, vlrLiquido)%>%
+  group_by(txtDescricao, numMes, numAno) %>%
+  summarise(total = sum(vlrLiquido)/1000000) %>%
+  filter(total == max(total), numAno == 2015) %>% View()
+  arrange(-numMes, numAno) %>%
+  ggplot(aes(numMes, total)) +
+  geom_point(position = position_jitter(width = 0.2, height = 0), size = 2, alpha = 0.5)+
+  labs(y = "Total gasto (Em milhões R$)")
 #Quais deputados possuem gastos com valores abaixo de zero?
+gastos_nordeste %>%
+  group_by(txtDescricao, numMes, numAno) %>% 
+  filter(numMes == 1, numAno == 2016) %>% View()
