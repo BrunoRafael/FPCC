@@ -90,6 +90,16 @@ gastos_nordeste %>%
 #verificar viés das 5 maiores coisas que os deputados gastam
 #dropar os nomes das despesas
 
+gastos_nordeste %>% 
+  group_by(txNomeParlamentar, txtDescricao) %>%
+  summarise(total = sum(vlrLiquido)) %>%
+  filter(total==max(total))%>%
+  arrange(desc(total)) %>%
+  top_n(n=10)%>%
+  
+  #ggplot(aes(x = txtDescricao, y = total)) + geom_point()+
+  #labs(x = "despesa", y = "Total gasto pelos deputados (R$)") +
+  #coord_flip()
 
 #gastos_nordeste %>% 
 #  group_by(txtDescricao) %>%
