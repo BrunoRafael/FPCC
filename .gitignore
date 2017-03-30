@@ -2,3 +2,11 @@
 .Rhistory
 .RData
 .Ruserdata
+data/*
+dados/deputados-detalhes.csv
+dados/gastos-cota_atividade_parlamentar.csv
+dados/partido-ideologias-observatorio_das_elites.csv
+dados/proposicoes.csv
+dados/resumo_votacoes.csv
+dados/valor-cota-por-estado.csv
+dados/votacoes.csv
