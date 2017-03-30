@@ -1,0 +1,66 @@
+---
+title: "gastos_da_camara_lab1"
+output: html_document
+---
+library(dplyr, warn.conflicts = F)
+library(readr)
+library(ggplot2)
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Data treatment
+gastos <- read_csv("dados//gastos-cota_atividade_parlamentar.csv")
+gastos_filter <- gastos %>% select(sgPartido, 
+                                  txtCNPJCPF,
+                                  sgUF,
+                                  txNomeParlamentar,
+                                  txtDescricao,
+                                  nuLegislatura,
+                                  vlrLiquido) %>% 
+  filter(!txNomeParlamentar %in% unique(sgPartido))
+
+# adjust data
+gastos_nordeste <- gastos_filter %>% 
+  filter(sgUF %in% c("PB", "CE", "MA", "AL", "BA", "PE", "RN", "SE", "PI"),
+  !is.na(txtDescricao),
+  !is.na(vlrLiquido))%>%
+  mutate(txtDescricao = ifelse(txtDescricao == "Emissão Bilhete Aéreo",
+                  "PASSAGENS AÉREAS", 
+                  txtDescricao)) 
+# Test data
+# Verify negative vlrLiquido values
+gastos_nordeste %>% 
+  group_by(txNomeParlamentar, txtDescricao) %>%
+  select(txNomeParlamentar,txtDescricao, vlrLiquido) %>%
+  filter(vlrLiquido <= 0) %>%
+  arrange(vlrLiquido) %>% View()
+  
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r cars}
+summary(cars)
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+
+```{r politics state}
+gastos_nordeste %>% select(txNomeParlamentar, sgUF) %>% 
+  unique() %>%
+  ggplot(mapping=aes(x = sgUF)) + 
+  geom_histogram(stat = "count") +
+  geom_rug(alpha = 0.7)
+```
