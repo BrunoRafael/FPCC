@@ -2,7 +2,9 @@
 title: "Análise dos gastos da câmara dos deputados"
 author: "Bruno Rafael Araújo Vasconcelos"
 date: "31 de março de 2017"
-output: pdf_document
+output:
+  html_document: default
+  pdf_document: default
 reference_docx: mystyles.docx
 header-includes: \setlength\parindent{24pt}
 ---
@@ -17,11 +19,9 @@ library(ggplot2)
 library(knitr)
 ```
 
+ Os gastos totais com parlamentares para o Exercício da Atividade Parlamentar(CEAP) ultrapassaram os 138 milhões de reais nos últimos dois anos. As chamadas cotas são benefícios dados aos deputados para o exercício de suas atividades durante o seu mandato, além dos seus salários. Cada deputado tem direito a por exemplo direito a gastos com Passagens aéreas, divulgação das atividades parlamentares, pedágios, estacionamentos, alimentação, serviços postais, serviços de táxi, manutenção de escritório e etc.
 
-
-Para esta pesquisa, avaliamos apenas os gastos dos deputados da região nordeste do Brasil são permitidos para cada parlamentar segundo o seu estado conforme a lei brasileira.
-
-Utilizamos os dados dos gastos da câmara dos deputados desde o mês de janeiro do ano de 2015 até o mês atual(março) e podem ser em contrados em <http://www2.camara.leg.br/transparencia/cota-para-exercicio-da-atividade-parlamentar/dados-abertos-cota-parlamentar>.
+Para esta pesquisa, avaliamos apenas os gastos com as cotas dos deputados da região nordeste do Brasil. Utilizamos os dados dos gastos da câmara dos deputados desde o mês de janeiro do ano de 2015 até o mês atual(março) e podem ser em contrados em <http://www2.camara.leg.br/transparencia/cota-para-exercicio-da-atividade-parlamentar/dados-abertos-cota-parlamentar>.
 
 
 ### O que queremos saber?
@@ -35,10 +35,7 @@ Procuramos responder nesta análise a duas perguntas:
 
 ###Quais tratamentos foram feitos nos dados?
 
-
-Abaixo, listamos cada problema e seu respectivo tratamento.
-
-
+Os dados do portal da camara apresentaram algumas inconsistências. Da melhor forma possível procuramos tratar os dados e sanar os problemas.
 
 ```{r, echo=FALSE}
 Problemas <- c("Observações sem nenhum valor", "Valores com mesmo significado \"Emissão Bilhete\" Aéreo e \"PASSAGENS AÉREAS\"",
@@ -53,17 +50,15 @@ kable(frame)
 ```{r gastos_nordeste, include=FALSE}
 
 gastos <- read_csv("dados//gastos-cota_atividade_parlamentar.csv")
-gastos_nordeste <- gastos %>% 
-  filter(sgUF %in% c("PB", "CE", "MA", "AL", "BA", "PE", "RN", "SE", "PI"),
-         !is.na(txtDescricao),
-         !is.na(vlrLiquido))%>%
+gastos_filter <- gastos %>% 
+  filter(!is.na(txtDescricao), !is.na(vlrLiquido))%>%
   mutate(txtDescricao = ifelse(txtDescricao == "Emissão Bilhete Aéreo",
                                "PASSAGENS AÉREAS", 
                                txtDescricao)) %>%
   filter(txtDescricao!="PASSAGENS AÉREAS"|| txtDescricao=="PASSAGENS AÉREAS" && vlrDocumento > 0)
 
 
-gastos_nordeste <- gastos_nordeste %>% select(sgPartido, 
+gastos_filter <- gastos_filter %>% select(sgPartido, 
                                    txtCNPJCPF,
                                    sgUF,
                                    nuLegislatura,
@@ -74,8 +69,11 @@ gastos_nordeste <- gastos_nordeste %>% select(sgPartido,
                                    vlrLiquido) %>% 
   filter(!txNomeParlamentar %in% unique(sgPartido))
 
-gastos_nordeste = gastos_nordeste %>% 
-  filter(complete.cases(gastos_nordeste))
+gastos_filter <- gastos_filter %>% 
+  filter(complete.cases(gastos_filter))
+
+gastos_nordeste <- gastos_filter %>% 
+  filter(sgUF %in% c("PB", "CE", "MA", "AL", "BA", "PE", "RN", "SE", "PI"))
 
 options(scipen=10)
 ```
@@ -83,7 +81,7 @@ options(scipen=10)
 #Análise
 
 
-  Vamos começar analisando de forma superficial, a distribuição do total de gastos de cada deputado, isto é, a soma de tudo o que foi gasto por cada parlamentar ao longo dos três últimos anos.
+ 
   
 
 ```{r, echo=FALSE}
@@ -98,7 +96,7 @@ gastos_nordeste %>%
 
   Observe que há uma grande concentração de deputados (parte debaixo) do gráfico que gastaram bem menos que outros(parte de cima). Observe que há deputados que gastaram mais de 1 milhão de reais enquanto que há outros que nem chegaram aos cem mil, há uma diferença brutal de gastos entre os deputados.
 
-Agora vamos analisar com o que exatamente os deputados gastaram.
+Agora vamos analisar com o que exatamente os deputados gastaram e como se comportam os parlamentares em relação a cada gasto.
 
 ```{r, echo=FALSE}
 gastos_nordeste %>%
@@ -111,7 +109,9 @@ gastos_nordeste %>%
   coord_flip()
 ```
 
- Observe que o tipo de despesa "Divulgação da atividade parlamentar" é a despesa favorita dos deputados. Perceba que temos alguns casos especiais aqui, de valores muitos altos e que aparenta ser o motivo pelo qual essa despesa tem um valor tão alto, bem mais alto que as outras.
+Despesas do tipo "Divulgação da atividade parlamentar" são as que mais os deputados usam suas cotas em segundo lugar "Passagens aéreas" e em terceiro  comparando em valores absolutos
+
+ Esse gráfico não diz muita coisa, mas podemos verificar que os deputados gastaram. Observe que o tipo de despesa "Divulgação da atividade parlamentar" é a despesa favorita dos deputados. Perceba que temos alguns casos especiais aqui, de valores muitos altos e que aparenta ser o motivo pelo qual essa despesa tem um valor tão alto, bem mais alto que as outras.
  
 Vejamos em valores absolutos:
 
@@ -122,7 +122,7 @@ gastos_nordeste %>%
   arrange(-total) %>%
   ggplot(aes(x = txtDescricao, y = total)) + 
   labs(x = "Descrição da despesa", y = "Soma dos gastos")+
-  theme(axis.text.x=element_text(angle=90,hjust=1,vjust=0.5))+
+  theme(axis.text.x=element_text(angle=-90,hjust=1,vjust=0.5))+
   geom_histogram(stat = "identity") +
   coord_flip()
 ```
@@ -139,7 +139,7 @@ gastos_nordeste %>%
   arrange(-numAno) %>%
   ggplot(mapping = aes(x = txtDescricao, y=total, fill = numAno)) + geom_bar(stat = "identity") +
   coord_flip()+
-  theme(axis.text.x=element_text(angle=90,hjust=1,vjust=0.5))+
+  theme(axis.text.x=element_text(angle=-90,hjust=1,vjust=0.5))+
   labs(x = "Descrição dos gastos", y = "Soma dos gastos dos 3 anos(R$)", fill="Ano")+ scale_fill_continuous(breaks=unique(gastos_nordeste$numAno))
 ```
   
