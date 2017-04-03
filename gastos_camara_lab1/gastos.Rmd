@@ -1,0 +1,228 @@
+---
+title: "Análise dos gastos da câmara dos deputados"
+author: "Bruno Rafael Araújo Vasconcelos"
+date: "31 de março de 2017"
+output: pdf_document
+reference_docx: mystyles.docx
+header-includes: \setlength\parindent{24pt}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+```{r library, include=FALSE}
+library(dplyr, warn.conflicts = F)
+library(readr)
+library(ggplot2)
+library(knitr)
+```
+
+
+
+Para esta pesquisa, avaliamos apenas os gastos dos deputados da região nordeste do Brasil são permitidos para cada parlamentar segundo o seu estado conforme a lei brasileira.
+
+Utilizamos os dados dos gastos da câmara dos deputados desde o mês de janeiro do ano de 2015 até o mês atual(março) e podem ser em contrados em <http://www2.camara.leg.br/transparencia/cota-para-exercicio-da-atividade-parlamentar/dados-abertos-cota-parlamentar>.
+
+
+### O que queremos saber?
+
+Procuramos responder nesta análise a duas perguntas: 
+
+**1. Quais as despesas em que os deputados mais gastam sua cota?**
+
+**2. Que tipos de despesa tem valores que mais variam quando comparamos os deputados?**
+
+
+###Quais tratamentos foram feitos nos dados?
+
+
+Abaixo, listamos cada problema e seu respectivo tratamento.
+
+
+
+```{r, echo=FALSE}
+Problemas <- c("Observações sem nenhum valor", "Valores com mesmo significado \"Emissão Bilhete\" Aéreo e \"PASSAGENS AÉREAS\"",
+"Valor dos documentos fiscais relacionados a passagens aéreas negativos", "Gastos com cotas dos partidos")
+Tratamentos <- c("Ocorrência ignorada.", "Os valores de \"Emissão Bilhete\" foram substituídas por \"PASSAGENS AÉREAS\".",
+"Todas as ocorrências em que o valor do documento é negativo significa que o valor indica um ressarcimento em que o parlamentar fez a compra mas não usufruiu dela. Portanto todas as ocorrências de despesas com passagens aéreas e valor do documento abaixo de zero, foram descartadas.", "A pesquisa se restringe apenas a avaliar os gastos dos parlamentares em suas cotas e não dos partidos. Portanto, removemos todos os dados referentes as despesas partidárias.")
+frame <- data.frame(Problemas, Tratamentos)
+kable(frame)
+```
+
+
+```{r gastos_nordeste, include=FALSE}
+
+gastos <- read_csv("dados//gastos-cota_atividade_parlamentar.csv")
+gastos_nordeste <- gastos %>% 
+  filter(sgUF %in% c("PB", "CE", "MA", "AL", "BA", "PE", "RN", "SE", "PI"),
+         !is.na(txtDescricao),
+         !is.na(vlrLiquido))%>%
+  mutate(txtDescricao = ifelse(txtDescricao == "Emissão Bilhete Aéreo",
+                               "PASSAGENS AÉREAS", 
+                               txtDescricao)) %>%
+  filter(txtDescricao!="PASSAGENS AÉREAS"|| txtDescricao=="PASSAGENS AÉREAS" && vlrDocumento > 0)
+
+
+gastos_nordeste <- gastos_nordeste %>% select(sgPartido, 
+                                   txtCNPJCPF,
+                                   sgUF,
+                                   nuLegislatura,
+                                   txNomeParlamentar,
+                                   txtDescricao,
+                                   numAno,
+                                   numMes,
+                                   vlrLiquido) %>% 
+  filter(!txNomeParlamentar %in% unique(sgPartido))
+
+gastos_nordeste = gastos_nordeste %>% 
+  filter(complete.cases(gastos_nordeste))
+
+options(scipen=10)
+```
+
+#Análise
+
+
+  Vamos começar analisando de forma superficial, a distribuição do total de gastos de cada deputado, isto é, a soma de tudo o que foi gasto por cada parlamentar ao longo dos três últimos anos.
+  
+
+```{r, echo=FALSE}
+gastos_nordeste %>% 
+  group_by(txNomeParlamentar) %>%
+  summarise(total = sum(vlrLiquido)) %>% 
+  arrange(-total) %>%
+  ggplot(aes(x = "", y = total)) +
+  geom_point(position = position_jitter(width = 0.3, height = 0), size = 2, alpha = 0.5)+
+  labs(x = "Deputados", y = "Gasto total de cada deputado nos últimos três anos(R$)")
+```
+
+  Observe que há uma grande concentração de deputados (parte debaixo) do gráfico que gastaram bem menos que outros(parte de cima). Observe que há deputados que gastaram mais de 1 milhão de reais enquanto que há outros que nem chegaram aos cem mil, há uma diferença brutal de gastos entre os deputados.
+
+Agora vamos analisar com o que exatamente os deputados gastaram.
+
+```{r, echo=FALSE}
+gastos_nordeste %>%
+  group_by(txNomeParlamentar, txtDescricao) %>%
+  summarise(total = sum(vlrLiquido)) %>%
+  arrange(desc(total)) %>%
+  ggplot(aes(x = txtDescricao, y = total)) + 
+  geom_point(position = position_jitter(width = 0.3, height = 0), size = 2, alpha = 0.5)+
+  labs(x = "Despesa", y = "Total gasto de cada despesa (R$)") +
+  coord_flip()
+```
+
+ Observe que o tipo de despesa "Divulgação da atividade parlamentar" é a despesa favorita dos deputados. Perceba que temos alguns casos especiais aqui, de valores muitos altos e que aparenta ser o motivo pelo qual essa despesa tem um valor tão alto, bem mais alto que as outras.
+ 
+Vejamos em valores absolutos:
+
+```{r, echo=FALSE, warning=FALSE,  cache=FALSE}
+gastos_nordeste %>% 
+  group_by(txtDescricao) %>%
+  summarise(total = sum(vlrLiquido)) %>%
+  arrange(-total) %>%
+  ggplot(aes(x = txtDescricao, y = total)) + 
+  labs(x = "Descrição da despesa", y = "Soma dos gastos")+
+  theme(axis.text.x=element_text(angle=90,hjust=1,vjust=0.5))+
+  geom_histogram(stat = "identity") +
+  coord_flip()
+```
+
+E o resultado é o mesmo, valores muito altos para essa despesa.
+
+  Observe que não consideramos ainda o tempo em nossa análise. Será que os deputados gastaram isso em um período específico, podendo ser considerado um caso isolado? Abaixo está a proporção de gastos em cada ano, de modo que um retângulo completo é referente à todos os gastos.
+
+
+```{r, echo = FALSE}
+gastos_nordeste %>% 
+  group_by(txtDescricao, numAno) %>%
+  summarise(total=sum(vlrLiquido)) %>% 
+  arrange(-numAno) %>%
+  ggplot(mapping = aes(x = txtDescricao, y=total, fill = numAno)) + geom_bar(stat = "identity") +
+  coord_flip()+
+  theme(axis.text.x=element_text(angle=90,hjust=1,vjust=0.5))+
+  labs(x = "Descrição dos gastos", y = "Soma dos gastos dos 3 anos(R$)", fill="Ano")+ scale_fill_continuous(breaks=unique(gastos_nordeste$numAno))
+```
+  
+  O gráfico mostrou que os parlamentares usaram suas cotas em todos os anos. Em 2017 foram considerados apenas 3 meses por estarmos ainda no terceiro mês do ano, por isso representa uma parcela menor em cada tipo de gasto. Com isso, respondemos a primeira pergunta "Em que os deputados mais gastam suas cotas?" E a resposta é, segundo a análise feita sobre os dados, há indícios de que os deputados gastem mais, de forma geral, com divulgação das suas atividades parlamentares.
+  
+#Avaliando as distribuições de cada tipo de gasto
+  A segunda pergunta é "Que tipos de despesa tem valores que mais variam quando comparamos os deputados?".
+  
+Para resonder a esta pergunta, vamos verificar o quanto cada tipo de despesa tem seus valores "espalhados", no sentido de que não há uma faixa de valores em que está inserido a maior parte dos valores totais. Em outras palavras, vamos verificar quais despesas os deputados gastam uma quantidade de forma diferente um dos outros com valores que variam de "muitos gastos" para "poucos gastos".
+
+```{r, echo=FALSE}
+gastos_nordeste %>%
+  group_by(txNomeParlamentar, txtDescricao) %>%
+  summarise(total = sum(vlrLiquido)) %>%
+  arrange(desc(total)) %>%
+  ggplot(aes(x = txtDescricao, y = total)) + 
+  geom_boxplot(alpha = 0.4)+
+  labs(x = "despesa", y = "Total gasto de cada despesa (R$)") +
+  coord_flip()
+ 
+```
+O gráfico mais "esticado" hirizontalmente é o de "Divulgação da atividade parlamentar" isso indica que essa despesa é a mais discrepante entre os deputados. Isso é curioso, pois vimos anteriormente que é a despesa em que mais os deputados gastam suas cotas. Este resultado sugere esse tipo de despesa é o que mais os parlamentares gastam,  porque existem muitos deputados que fazem o valor da soma "engordar". Observe também a despesa "Assinatura de publicações", ela é muito concentrada, é quase sem "esticamento". Para  todos os deputados que gastam com isso, eles gastam de forma "semelhante", a diferença de valores gastos por cada deputado é bem menor do que em outras variáveis como "Divulgação da atividade parlamentar", "Passagens aéreas" e "Locação ou fretamento de veículos automotores". 
+
+Vejamos como se comporta essa variação ao longo dos três anos.
+
+```{r, echo=FALSE}
+
+gastos_nordeste %>%
+  group_by(txNomeParlamentar, numMes, numAno, txtDescricao) %>%
+  summarise(total = sum(vlrLiquido)) %>%
+  filter(numAno==2015) %>%
+  arrange(desc(total)) %>%
+  ggplot(aes(x = txtDescricao, y = total)) + 
+  geom_boxplot(alpha = 0.4)+
+  facet_grid(numAno ~ .) + 
+  labs(x = "despesa", y = "Total gasto (R$)") +
+  coord_flip()
+
+gastos_nordeste %>%
+  group_by(txNomeParlamentar, numMes, numAno, txtDescricao) %>%
+  summarise(total = sum(vlrLiquido)) %>%
+  filter(numAno==2016) %>%
+  arrange(desc(total)) %>%
+  ggplot(aes(x = txtDescricao, y = total)) + 
+  geom_boxplot(alpha = 0.4)+
+  facet_grid(numAno ~ .) + 
+  labs(x = "despesa", y = "Total gasto (R$)") +
+  coord_flip()
+
+gastos_nordeste %>%
+  group_by(txNomeParlamentar, numMes, numAno, txtDescricao) %>%
+  summarise(total = sum(vlrLiquido)) %>%
+  filter(numAno==2017) %>%
+  arrange(desc(total)) %>%
+  ggplot(aes(x = txtDescricao, y = total)) + 
+  geom_boxplot(alpha = 0.4)+
+  facet_grid(numAno ~ .) + 
+  labs(x = "Despesa", y = "Total gasto (R$)") +
+  coord_flip()
+```
+
+
+Perceba que "Divulgação da atividade parlamentar" continua sendo a "campeã", os gráficos para esta despesa continuam mais "esticados" do que os outros.
+
+
+Para terminar nossa análise, vamos observar algumas métricas estatísticas e comparar com nossos gráficos. 
+
+Vamos olhar especificamente para as "6 primeiras" despesas que apresentaram um "esticamento" maior nos gráficos.
+
+
+
+```{r, echo=FALSE}
+
+head(gastos_nordeste %>%group_by(txtDescricao)%>%
+summarise(Total=sum(vlrLiquido), IQR = IQR(vlrLiquido), Desvio_padrão=sd(vlrLiquido))%>% arrange(-IQR, -Desvio_padrão)) %>% kable(digits = 3, align = c(rep("l", 1), rep("c", 1), rep("r", 1)))
+
+```
+
+
+
+Aqui, a despesa "campeã" não foi "Divulgação da atividade parlamentar" e sim "Locação ou fretamento de aeronaves", porém ambas estão nas primeiras posições. Observe que quanto maior o IQR mais o gráfico é esticado e consequentemente mais discrepante são os gastos por deputado.
+
+##Conclusão
+Para a primeira pergunta, há indícios de que o tipo de despesa na qual os deputados nordestinos mais gastam é em **Divulgação da atividade parlamentar** considerando os últimos três anos. E este mesmo tipo de despesa é um tipo de despesa que varia muito os totais gastos de deputado para deputado, assim como **Locação ou fretamento de aeronaves** e **consultorias pesquisas e trabalhos técnicos** respondendo a segunda pergunta.
+
+
