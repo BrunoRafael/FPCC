@@ -1,0 +1,82 @@
+---
+title: "Análise dos gastos da câmara dos deputados"
+output: html_document
+---
+
+```{r}
+library(dplyr, warn.conflicts = F)
+library(readr)
+library(ggplot2)
+```
+
+```{r, echo=FALSE, warning=FALSE,  cache=FALSE}
+gastos_2010 <- read_csv2("dados//Ano-2010.csv") %>% 
+  select(txNomeParlamentar, txtDescricao, 
+         vlrLiquido, nuLegislatura, codLegislatura, 
+         sgUF, numMes, numAno)
+
+gastos_2011 <- read_csv2("dados//Ano-2011.csv") %>% 
+  select(txNomeParlamentar, txtDescricao, 
+         vlrLiquido, nuLegislatura, codLegislatura, 
+         sgUF, numMes, numAno)
+
+gastos_2012 <- read_csv2("dados//Ano-2012.csv") %>% 
+  select(txNomeParlamentar, txtDescricao, 
+           vlrLiquido, nuLegislatura, codLegislatura, 
+         sgUF, numMes, numAno)
+
+gastos_2013 <- read_csv2("dados//Ano-2013.csv")%>% 
+  select(txNomeParlamentar, txtDescricao, 
+         vlrLiquido, nuLegislatura, codLegislatura, 
+         sgUF, numMes, numAno)
+
+gastos_2014 <- read_csv2("dados//Ano-2014.csv")%>% 
+  select(txNomeParlamentar, txtDescricao, 
+         vlrLiquido, nuLegislatura, codLegislatura, 
+         sgUF, numMes, numAno)
+
+gastos <- read_csv("dados//gastos-cota_atividade_parlamentar.csv") %>%
+  select(txNomeParlamentar, txtDescricao, 
+         vlrLiquido, nuLegislatura, codLegislatura, 
+         sgUF, numMes, numAno)
+
+cotas_por_estado <- read_csv2("dados//valor-cota-por-estado.csv")
+
+gastos <- gastos %>% rbind(gastos_2010)
+gastos <- gastos %>% rbind(gastos_2011)
+gastos <- gastos %>% rbind(gastos_2012)
+gastos <- gastos %>% rbind(gastos_2013)
+gastos <- gastos %>% rbind(gastos_2014)
+
+gastos <- gastos %>% 
+  filter(!is.na(txtDescricao), !is.na(vlrLiquido))%>%
+  mutate(txtDescricao = ifelse(txtDescricao == "Emissão Bilhete Aéreo",
+                               "PASSAGENS AÉREAS", 
+                               txtDescricao))
+```
+
+```{r setup, include=FALSE, warning=FALSE,}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Para esta segunda parte da pesquisa, faremos um estudo envolvendo os dados dos deputados de todos os estados. Porém, consideraremos apenas os dados desde janeiro de 2015 até agora.
+
+Todos os dados usados podem ser encontrados no site da camâra federal
+http://www2.camara.leg.br/transparencia/cota-para-exercicio-da-atividade-parlamentar/dados-abertos-cota-parlamentar.
+
+##Tratamento dos dados
+
+A tabela a seguir, mostra os problemas apresentados com os dados e o tratamento com eles
+
+
+## O que queremos saber?
+
+Para avaliar os gastos públicos com deputados federais no Brasil, fizemos um estudo usando dados coletados pela própria câmara federal que demonstram com o que cada deputado gastou ao longo dos últimos 3 anos. Vale lembrar que cada deputado possui uma cota, que é um limite de gastos, fora o salário pago pelo próprio governo para manutenção do exercício de suas atividade. Dentre os gastos que podem ser incluídos nas cotas estão . Mais detalhes podem ser vistos [aqui](http://www2.camara.leg.br/comunicacao/assessoria-de-imprensa/cota-parlamentar)
+
+O limite de cada cota varia de estado para estado, por exemplo o valor máximo que um deputado pode gastar em Roraima é de ______ enquanto que na Paraíba é de ______. Só que podem existir parlamentares que são mais conscientes e que para não elevar as despesas públicas preferem não usar toda a cota disponível. Será que é alto o número de deputados que fazem isso? Será que eles fazem isso em anos/meses de eleição? E quanto aos gastos com passagens aéres? Como varia de estado para estado? Vamos tentar repsonder estas perguntas.
+
+##Análise
+
+*1.Quais os estados em que os deputados menos usam suas cotas? Em anos de eleição eles usam mais ou menos as cotas?*
+
+*2.Quais as regiões brasileiras em que os gastos com passagens aéreas mais variam?*
