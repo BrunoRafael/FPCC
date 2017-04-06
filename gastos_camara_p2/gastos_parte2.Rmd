@@ -3,56 +3,72 @@ title: "Análise dos gastos da câmara dos deputados"
 output: html_document
 ---
 
-```{r}
+```{r, echo=FALSE}
 library(dplyr, warn.conflicts = F)
 library(readr)
 library(ggplot2)
+
 ```
 
-```{r, echo=FALSE, warning=FALSE,  cache=FALSE}
+```{r, error=FALSE, message=FALSE}
+
+gastos_2009 <- read_csv2("dados//Ano-2009.csv") %>% 
+  select(sgPartido, txNomeParlamentar, txtDescricao, 
+         vlrLiquido, nuLegislatura, codLegislatura, 
+         sgUF, numMes, numAno)
+
 gastos_2010 <- read_csv2("dados//Ano-2010.csv") %>% 
-  select(txNomeParlamentar, txtDescricao, 
+  select(sgPartido, txNomeParlamentar, txtDescricao, 
          vlrLiquido, nuLegislatura, codLegislatura, 
          sgUF, numMes, numAno)
 
 gastos_2011 <- read_csv2("dados//Ano-2011.csv") %>% 
-  select(txNomeParlamentar, txtDescricao, 
+  select(sgPartido, txNomeParlamentar, txtDescricao, 
          vlrLiquido, nuLegislatura, codLegislatura, 
          sgUF, numMes, numAno)
 
 gastos_2012 <- read_csv2("dados//Ano-2012.csv") %>% 
-  select(txNomeParlamentar, txtDescricao, 
+  select(sgPartido, txNomeParlamentar, txtDescricao, 
            vlrLiquido, nuLegislatura, codLegislatura, 
          sgUF, numMes, numAno)
 
 gastos_2013 <- read_csv2("dados//Ano-2013.csv")%>% 
-  select(txNomeParlamentar, txtDescricao, 
+  select(sgPartido, txNomeParlamentar, txtDescricao, 
          vlrLiquido, nuLegislatura, codLegislatura, 
          sgUF, numMes, numAno)
 
 gastos_2014 <- read_csv2("dados//Ano-2014.csv")%>% 
-  select(txNomeParlamentar, txtDescricao, 
+  select(sgPartido, txNomeParlamentar, txtDescricao, 
          vlrLiquido, nuLegislatura, codLegislatura, 
          sgUF, numMes, numAno)
 
 gastos <- read_csv("dados//gastos-cota_atividade_parlamentar.csv") %>%
-  select(txNomeParlamentar, txtDescricao, 
+  select(sgPartido, txNomeParlamentar, txtDescricao, 
          vlrLiquido, nuLegislatura, codLegislatura, 
          sgUF, numMes, numAno)
-
 cotas_por_estado <- read_csv2("dados//valor-cota-por-estado.csv")
 
+deputados <- read_csv("dados//deputados-detalhes.csv")
+
+gastos <- gastos %>% rbind(gastos_2009)
 gastos <- gastos %>% rbind(gastos_2010)
 gastos <- gastos %>% rbind(gastos_2011)
 gastos <- gastos %>% rbind(gastos_2012)
 gastos <- gastos %>% rbind(gastos_2013)
 gastos <- gastos %>% rbind(gastos_2014)
 
-gastos <- gastos %>% 
-  filter(!is.na(txtDescricao), !is.na(vlrLiquido))%>%
-  mutate(txtDescricao = ifelse(txtDescricao == "Emissão Bilhete Aéreo",
-                               "PASSAGENS AÉREAS", 
-                               txtDescricao))
+nomes_titulares <- deputados %>% filter(condicao=="Titular") %>% select(nomeParlamentar)
+nomes_suplentes <- deputados %>% filter(condicao=="Suplente") %>% select(nomeParlamentar)
+
+gastos_titulares <- gastos %>% filter(txNomeParlamentar %in% nomes_titulares$nomeParlamentar)
+gastos_suplentes <- gastos %>% filter(txNomeParlamentar %in% nomes_suplentes$nomeParlamentar)
+
+rm(gastos_2009)
+rm(gastos_2010)
+rm(gastos_2011)
+rm(gastos_2012)
+rm(gastos_2013)
+rm(gastos_2014)
 ```
 
 ```{r setup, include=FALSE, warning=FALSE,}
@@ -66,8 +82,56 @@ http://www2.camara.leg.br/transparencia/cota-para-exercicio-da-atividade-parlame
 
 ##Tratamento dos dados
 
-A tabela a seguir, mostra os problemas apresentados com os dados e o tratamento com eles
+```{r}
 
+head(gastos %>% filter(is.na(sgPartido))) %>% View()
+head(gastos %>% filter(!sgPartido %in% deputados$partido)) %>% View()
+head(gastos %>% filter(!is.character(sgPartido))) %>% View()
+
+head(gastos %>% filter(is.na(txNomeParlamentar))) %>% View()
+head(gastos %>% filter(!txNomeParlamentar %in% deputados$nomeParlamentar)) %>% View()
+head(gastos %>% filter(!is.character(txNomeParlamentar))) %>% View()
+
+head(gastos %>% filter(is.na(txtDescricao))) %>% View()
+head(gastos %>% filter(!is.character(txtDescricao))) %>% View()
+
+head(gastos %>% filter(is.na(vlrLiquido))) %>% View()
+head(gastos %>% filter(!is.double(vlrLiquido))) %>% View()
+
+tratar Legislatura nula
+head(gastos %>% filter(is.na(nuLegislatura))) %>% View()
+head(gastos %>% filter(!is.numeric(nuLegislatura))) %>% View()
+
+tratar codigo de legislatura nula
+head(gastos %>% filter(is.na(codLegislatura))) %>% View()
+head(gastos %>% filter(!is.numeric(codLegislatura))) %>% View()
+
+head(gastos %>% filter(is.na(numAno))) %>% View()
+head(gastos %>% filter(!is.numeric(numAno))) %>% View()
+
+tratar mês nulo
+head(gastos %>% filter(is.na(numMes))) %>% View()
+head(gastos %>% filter(!is.numeric(numMes))) %>% View()
+
+tratar partidos nulos
+head(gastos %>% filter(is.na(sgUF))) %>% View()
+head(gastos %>% filter(!is.character(sgUF))) %>% View()
+
+```
+
+Consideramos aqui que se uma despesa foi feita em um mandato, mas só descontada em outro então a despesa vai para o segundo mandato. Outra coisa, consideramos que 
+
+A tabela a seguir, mostra os problemas apresentados com os dados e o tratamento com eles.
+```{r}
+gastos <- gastos %>% 
+  filter(!is.na(vlrLiquido) | vlrLiquido == 0) %>%
+  filter(!is.na(numAno)) %>%
+  mutate(txtDescricao = ifelse(txtDescricao == "Emissão Bilhete Aéreo",
+                               "PASSAGENS AÉREAS", 
+                               txtDescricao))
+head(gastos %>% filter(is.na(vlrLiquido))) %>% View()
+
+```
 
 ## O que queremos saber?
 
