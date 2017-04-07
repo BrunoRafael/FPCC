@@ -154,10 +154,10 @@ Em valores absolutos, a direita é "campeã" em gastos desde 2009. A diferença 
 gastos_titulares %>% group_by(ideologia_simplificada, numAno) %>% 
 filter(numAno <= 2017 & numAno >= 2009) %>%
 summarise(Total = sum(vlrLiquido)/1000000) %>%
-ggplot(aes(x = reorder(ideologia_simplificada, Total), y=Total)) + 
+ggplot(aes(x = reorder(as.factor(ideologia_simplificada), Total), y=Total, fill=as.factor(ideologia_simplificada))) + 
 geom_histogram(stat = "identity") +
 facet_grid(.~numAno)+
-theme(axis.text.x=element_text(angle=90,hjust=1,vjust=0.5))+
+theme(axis.text.x=element_text(angle=-90,hjust=1,vjust=0.5))+
 labs(x="Ideologia", y = "Gastos R$ (em milhões)")
 
 ```
@@ -180,8 +180,8 @@ gastos_titulares %>%
 group_by(ideologia_simplificada, numAno) %>%
 summarise(total=sum(vlrLiquido)/1000000) %>% 
 arrange(numAno) %>%
-ggplot(mapping = aes(x = ideologia_simplificada, y=total, fill = numAno)) + geom_bar(stat = "identity") +
+ggplot(mapping = aes(x = reorder(ideologia_simplificada, total), y=total, fill = numAno)) + geom_bar(stat = "identity") +
 coord_flip()+
 theme(axis.text.x=element_text(angle=-90,hjust=1,vjust=0.5))+
-labs(x = "Ideologia", y = "Gastos (R$ em milhões)", fill="Ano")+ scale_fill_continuous(breaks=unique(gastos_titulares$numAno))
+labs(x = "Ideologia", y = "Gastos (R$ em milhões)", fill="Ano")+ scale_fill_continuous(breaks=unique(gastos_titulares$numAno), low="blue", high="orange")
 ```
