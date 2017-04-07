@@ -2,7 +2,9 @@
 title: "Análise dos gastos da câmara dos deputados"
 author: "Bruno Rafael Araújo Vasconcelos"
 date: "31 de março de 2017"
-output: html_document
+output:
+  html_document: default
+  pdf_document: default
 ---
 
 ```{r, echo=FALSE}
@@ -13,6 +15,12 @@ library(ggplot2)
 ```
 
 ```{r, include=FALSE}
+formata_label = function(l){
+  # existem funções para formatar com , sendo milhar e . sendo decimal (scales::comma)
+  # mas em pt_br é o contrário. essa função serve para isso
+  format(l, big.mark = ".", scientific = FALSE, trim = TRUE, decimal.mark = ",")
+} 
+
 gastos_2009 <- read_csv2("dados//Ano-2009.csv") %>% 
   select(sgPartido, txNomeParlamentar, txtDescricao, 
          vlrLiquido, nuLegislatura, codLegislatura, 
@@ -108,14 +116,25 @@ O repositório com os dados e o código usado nesta e em outras análises se enc
 ```{r, warning=FALSE}
 gastos_titulares %>% group_by(ideologia_simplificada) %>% 
 filter(numAno <= 2017 & numAno >= 2009) %>%
-summarise(Total = sum(vlrLiquido)/1000000) %>%
+summarise(Total = sum(vlrLiquido)) %>% View()
 ggplot(aes(x = reorder(ideologia_simplificada, Total), y=Total)) + 
 geom_histogram(stat = "identity") +
 labs(x="Estado(UF)", y = "Total de gastos R$ (Em milhões)")+
 coord_flip()
 ```
 
-Em valores absolutos, a direita é "campeã" em gastos desde 2009. a diferença total
+```{r, warning=FALSE}
+gastos_titulares %>% group_by(ideologia_simplificada) %>% 
+filter(numAno <= 2017 & numAno >= 2009) %>%
+ggplot(aes(x = ideologia_simplificada, y=vlrLiquido, fill=ideologia_simplificada)) + 
+geom_boxplot(alpha = 0.4)+
+scale_y_log10(labels=formata_label)+
+labs(x = "Ideologia", y = "Gastos (R$ em milhões)")+
+coord_flip()
+```
+
+
+Em valores absolutos, a direita é "campeã" em gastos desde 2009. A diferença total entre direita e esquerda chega a ser de 
 
 ```{r, warning=FALSE}
 gastos_titulares %>% group_by(ideologia_simplificada, numAno) %>% 
@@ -127,4 +146,28 @@ facet_grid(numAno ~ .)+
 labs(x="Estado(UF)", y = "Total de gastos R$ (Em milhões)")+
 coord_flip()
 
+```
+
+```{r, warning=FALSE}
+gastos_titulares %>% group_by(ideologia_simplificada, numAno) %>% 
+filter(numAno <= 2017 & numAno >= 2009) %>%
+ggplot(aes(x = ideologia_simplificada, y=vlrLiquido, fill=ideologia_simplificada)) + 
+geom_boxplot(alpha = 0.4)+
+scale_y_log10(labels=formata_label)+
+facet_grid(numAno ~ .)+
+labs(x="Estado(UF)", y = "Total de gastos R$ (Em milhões)")+
+coord_flip()
+
+```
+
+
+```{r, warning=FALSE}
+gastos_titulares %>% 
+  group_by(ideologia_simplificada, numAno) %>%
+  summarise(total=sum(vlrLiquido)/1000000) %>% 
+  arrange(numAno) %>%
+  ggplot(mapping = aes(x = ideologia_simplificada, y=total, fill = numAno)) + geom_bar(stat = "identity") +
+  coord_flip()+
+  theme(axis.text.x=element_text(angle=-90,hjust=1,vjust=0.5))+
+  labs(x = "Descrição dos gastos", y = "Gastos (R$ em milhões)", fill="Ano")+ scale_fill_continuous(breaks=unique(gastos_titulares$numAno))
 ```
