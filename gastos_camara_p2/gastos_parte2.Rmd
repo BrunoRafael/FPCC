@@ -105,7 +105,7 @@ O repositório com os dados e o código usado nesta e em outras análises se enc
 *Extra: Algum deputado extrapolou a cota de seu estado ao longo dos anos? Quanto o governo teve de pagar a mais e qual os deputados que mais extrapolaram?*
 
 
-```{r}
+```{r, warning=FALSE}
 gastos_titulares %>% group_by(ideologia_simplificada) %>% 
 filter(numAno <= 2017 & numAno >= 2009) %>%
 summarise(Total = sum(vlrLiquido)/1000000) %>%
@@ -113,18 +113,6 @@ ggplot(aes(x = reorder(ideologia_simplificada, Total), y=Total)) +
 geom_histogram(stat = "identity") +
 labs(x="Estado(UF)", y = "Total de gastos R$ (Em milhões)")+
 coord_flip()
-```
-
-```{r, warning=FALSE}
-gastos_titulares %>% group_by(ideologia_simplificada, numAno) %>% 
-filter(numAno <= 2017 & numAno >= 2009) %>%
-summarise(Total = sum(vlrLiquido)/1000000) %>%
-ggplot(aes(x = reorder(ideologia_simplificada, Total), y=Total)) + 
-geom_histogram(stat = "identity") +
-facet_grid(numAno ~ .)+
-labs(x="Estado(UF)", y = "Total de gastos R$ (Em milhões)")+
-coord_flip()
-
 ```
 
 Em valores absolutos, a direita é "campeã" em gastos desde 2009. a diferença total
