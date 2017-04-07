@@ -94,6 +94,8 @@ Para avaliar os gastos públicos com deputados federais no Brasil, fizemos um es
 
 O limite de cada cota varia de estado para estado, por exemplo o valor máximo que um deputado pode gastar em Roraima é de ______ enquanto que na Paraíba é de ______. Só que podem existir parlamentares que são mais conscientes e que para não elevar as despesas públicas preferem não usar toda a cota disponível. Será que é alto o número de deputados que fazem isso? Será que eles fazem isso em anos/meses de eleição? E quanto aos gastos com passagens aéres? Como varia de estado para estado? Vamos tentar repsonder estas perguntas.
 
+O repositório com os dados e o código usado nesta e em outras análises se encontra [aqui](https://github.com/BrunoRafael/FPCC)
+
 ##Análise
 
 *Como funciona a variação de gastos entre direita e esquerda? Quem gasta mais?*
@@ -104,10 +106,30 @@ O limite de cada cota varia de estado para estado, por exemplo o valor máximo q
 
 
 ```{r}
+gastos_titulares %>% group_by(ideologia_simplificada) %>% 
+filter(numAno <= 2017 & numAno >= 2009) %>%
+summarise(Total = sum(vlrLiquido)/1000000) %>%
+ggplot(aes(x = reorder(ideologia_simplificada, Total), y=Total)) + 
+geom_histogram(stat = "identity") +
+labs(x="Estado(UF)", y = "Total de gastos R$ (Em milhões)")+
+coord_flip()
+```
+
+```{r, warning=FALSE}
+gastos_titulares %>% group_by(ideologia_simplificada, numAno) %>% 
+filter(numAno <= 2017 & numAno >= 2009) %>%
+summarise(Total = sum(vlrLiquido)/1000000) %>%
+ggplot(aes(x = reorder(ideologia_simplificada, Total), y=Total)) + 
+geom_histogram(stat = "identity") +
+facet_grid(numAno ~ .)+
+labs(x="Estado(UF)", y = "Total de gastos R$ (Em milhões)")+
+coord_flip()
 
 ```
 
-```{r}
+Em valores absolutos, a direita é "campeã" em gastos desde 2009. a diferença total
+
+```{r, warning=FALSE}
 gastos_titulares %>% group_by(ideologia_simplificada, numAno) %>% 
 filter(numAno <= 2017 & numAno >= 2009) %>%
 summarise(Total = sum(vlrLiquido)/1000000) %>%
