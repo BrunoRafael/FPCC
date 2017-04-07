@@ -48,4 +48,17 @@ gastos <- gastos %>%
                                txtDescricao))
 
 View(gastos)
-
+#legislaturas <- list("53" = 2009:2010, "54"=2011:2014, "55"=2015:2017)
+#calc_year <- function(nuLegislatura)
+#{
+#  u <- 0
+#  for(leg in legislaturas)
+#  {
+#    if(nuLegislatura == leg)
+#    {
+#      u <- sample(legislaturas[leg], 1, replace=FALSE)
+#    }
+#  }
+#  return(u)
+#}
+#gastos <- gastos %>% mutate(ifelse(numAno > 2017 | numAno < 2009, calc_year(nuLegislatura), numAno))

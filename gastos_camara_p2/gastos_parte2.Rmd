@@ -1,5 +1,7 @@
 ---
 title: "Análise dos gastos da câmara dos deputados"
+author: "Bruno Rafael Araújo Vasconcelos"
+date: "31 de março de 2017"
 output: html_document
 ---
 
@@ -10,8 +12,7 @@ library(ggplot2)
 
 ```
 
-```{r, error=FALSE, message=FALSE}
-
+```{r, include=FALSE}
 gastos_2009 <- read_csv2("dados//Ano-2009.csv") %>% 
   select(sgPartido, txNomeParlamentar, txtDescricao, 
          vlrLiquido, nuLegislatura, codLegislatura, 
@@ -47,8 +48,8 @@ gastos <- read_csv("dados//gastos-cota_atividade_parlamentar.csv") %>%
          vlrLiquido, nuLegislatura, codLegislatura, 
          sgUF, numMes, numAno)
 cotas_por_estado <- read_csv2("dados//valor-cota-por-estado.csv")
-
 deputados <- read_csv("dados//deputados-detalhes.csv")
+ideologia <- read_csv("dados//partido-ideologias-observatorio_das_elites.csv")
 
 gastos <- gastos %>% rbind(gastos_2009)
 gastos <- gastos %>% rbind(gastos_2010)
@@ -57,10 +58,27 @@ gastos <- gastos %>% rbind(gastos_2012)
 gastos <- gastos %>% rbind(gastos_2013)
 gastos <- gastos %>% rbind(gastos_2014)
 
+View(gastos)
+
+gastos <- gastos %>% right_join(ideologia, c("sgPartido" = "sigla_partido"))
+gastos <- gastos %>% select(-ideologia_nuancada, -ideol_tamanho_partido, -nome_partido)
+
+```
+
+Consideramos aqui que se uma despesa foi feita em uma legislatura, mas só descontada da cota do deputado em um ano diferente após a legislatura, a despesa vai para o ano em que realmente foi descontada pois estamos interessados apenas em comparar os gastos entre esquerda e direita e não comparar os gastos anuais.
+
+A tabela a seguir, mostra os problemas apresentados com os dados e o tratamento com eles.
+
+```{r}
+gastos <- gastos %>% 
+  filter(!is.na(vlrLiquido)) %>%
+  filter(!is.na(numAno)) %>%
+  mutate(txtDescricao = ifelse(txtDescricao == "Emissão Bilhete Aéreo", "PASSAGENS AÉREAS", txtDescricao))
+
 nomes_titulares <- deputados %>% filter(condicao=="Titular") %>% select(nomeParlamentar)
 nomes_suplentes <- deputados %>% filter(condicao=="Suplente") %>% select(nomeParlamentar)
 
-gastos_titulares <- gastos %>% filter(txNomeParlamentar %in% nomes_titulares$nomeParlamentar)
+View(gastos_titulares) <- gastos %>% filter(txNomeParlamentar %in% nomes_titulares$nomeParlamentar)
 gastos_suplentes <- gastos %>% filter(txNomeParlamentar %in% nomes_suplentes$nomeParlamentar)
 
 rm(gastos_2009)
@@ -71,76 +89,41 @@ rm(gastos_2013)
 rm(gastos_2014)
 ```
 
-```{r setup, include=FALSE, warning=FALSE,}
-knitr::opts_chunk$set(echo = TRUE)
-```
-
-Para esta segunda parte da pesquisa, faremos um estudo envolvendo os dados dos deputados de todos os estados. Porém, consideraremos apenas os dados desde janeiro de 2015 até agora.
-
-Todos os dados usados podem ser encontrados no site da camâra federal
-http://www2.camara.leg.br/transparencia/cota-para-exercicio-da-atividade-parlamentar/dados-abertos-cota-parlamentar.
-
-##Tratamento dos dados
-
-```{r}
-
-head(gastos %>% filter(is.na(sgPartido))) %>% View()
-head(gastos %>% filter(!sgPartido %in% deputados$partido)) %>% View()
-head(gastos %>% filter(!is.character(sgPartido))) %>% View()
-
-head(gastos %>% filter(is.na(txNomeParlamentar))) %>% View()
-head(gastos %>% filter(!txNomeParlamentar %in% deputados$nomeParlamentar)) %>% View()
-head(gastos %>% filter(!is.character(txNomeParlamentar))) %>% View()
-
-head(gastos %>% filter(is.na(txtDescricao))) %>% View()
-head(gastos %>% filter(!is.character(txtDescricao))) %>% View()
-
-head(gastos %>% filter(is.na(vlrLiquido))) %>% View()
-head(gastos %>% filter(!is.double(vlrLiquido))) %>% View()
-
-tratar Legislatura nula
-head(gastos %>% filter(is.na(nuLegislatura))) %>% View()
-head(gastos %>% filter(!is.numeric(nuLegislatura))) %>% View()
-
-tratar codigo de legislatura nula
-head(gastos %>% filter(is.na(codLegislatura))) %>% View()
-head(gastos %>% filter(!is.numeric(codLegislatura))) %>% View()
-
-head(gastos %>% filter(is.na(numAno))) %>% View()
-head(gastos %>% filter(!is.numeric(numAno))) %>% View()
-
-tratar mês nulo
-head(gastos %>% filter(is.na(numMes))) %>% View()
-head(gastos %>% filter(!is.numeric(numMes))) %>% View()
-
-tratar partidos nulos
-head(gastos %>% filter(is.na(sgUF))) %>% View()
-head(gastos %>% filter(!is.character(sgUF))) %>% View()
-
-```
-
-Consideramos aqui que se uma despesa foi feita em um mandato, mas só descontada em outro então a despesa vai para o segundo mandato. Outra coisa, consideramos que 
-
-A tabela a seguir, mostra os problemas apresentados com os dados e o tratamento com eles.
-```{r}
-gastos <- gastos %>% 
-  filter(!is.na(vlrLiquido) | vlrLiquido == 0) %>%
-  filter(!is.na(numAno)) %>%
-  mutate(txtDescricao = ifelse(txtDescricao == "Emissão Bilhete Aéreo",
-                               "PASSAGENS AÉREAS", 
-                               txtDescricao))
-head(gastos %>% filter(is.na(vlrLiquido))) %>% View()
-
-```
-
 ## O que queremos saber?
 
-Para avaliar os gastos públicos com deputados federais no Brasil, fizemos um estudo usando dados coletados pela própria câmara federal que demonstram com o que cada deputado gastou ao longo dos últimos 3 anos. Vale lembrar que cada deputado possui uma cota, que é um limite de gastos, fora o salário pago pelo próprio governo para manutenção do exercício de suas atividade. Dentre os gastos que podem ser incluídos nas cotas estão . Mais detalhes podem ser vistos [aqui](http://www2.camara.leg.br/comunicacao/assessoria-de-imprensa/cota-parlamentar)
+Para avaliar os gastos públicos com deputados federais no Brasil, fizemos um estudo usando dados coletados pela própria câmara federal que demonstram com o que cada deputado gastou desde 2009. Vale lembrar que cada deputado possui uma cota, que é um limite de gastos fora o salário pago pelo próprio governo para manutenção do exercício de suas atividade. Dentre os gastos que podem ser incluídos nas cotas estão . Mais detalhes podem ser vistos [aqui](http://www2.camara.leg.br/comunicacao/assessoria-de-imprensa/cota-parlamentar)
 
 O limite de cada cota varia de estado para estado, por exemplo o valor máximo que um deputado pode gastar em Roraima é de ______ enquanto que na Paraíba é de ______. Só que podem existir parlamentares que são mais conscientes e que para não elevar as despesas públicas preferem não usar toda a cota disponível. Será que é alto o número de deputados que fazem isso? Será que eles fazem isso em anos/meses de eleição? E quanto aos gastos com passagens aéres? Como varia de estado para estado? Vamos tentar repsonder estas perguntas.
 
 ##Análise
 
-*1.Quais os estados em que os deputados menos usam suas cotas? Em anos de eleição eles usam mais ou menos as cotas?*
+*Como funciona a variação de gastos entre direita e esquerda? Quem gasta mais?*
 
-*2.Quais as regiões brasileiras em que os gastos com passagens aéreas mais variam?*
+*Quais os partidos em que os deputados possuem maior diferença entre os gastos?*
+
+*Extra: Algum deputado extrapolou a cota de seu estado ao longo dos anos? Quanto o governo teve de pagar a mais e qual os deputados que mais extrapolaram?*
+
+
+```{r}
+
+```
+
+```{r}
+gastos_titulares %>% group_by(ideologia_simplificada, numAno) %>% 
+filter(numAno > 2017 | numAno < 2009) %>%
+summarise(Total = sum(vlrLiquido)/1000000) %>%
+ggplot(aes(x=ideologia_simplificada, y=Total)) + 
+geom_histogram(stat = "identity") +
+facet_grid(numAno ~ .)+
+labs(x="Estado(UF)", y = "Total de gastos R$ (Em milhões)")+
+coord_flip()
+
+gastos_titulares %>% group_by(ideologia_simplificada, numAno) %>% 
+summarise(Total = sum(vlrLiquido)/1000000) %>%
+ggplot(aes(x=sgUF, y=Total)) + 
+geom_boxplot(width = .3) +
+facet_grid(numAno ~ .)+
+geom_point(position = position_jitter(width = 0.1, height = 0), size = 2, alpha = 0.5)+
+labs(x="Estado(UF)", y = "Total de gastos R$ (Em milhões)")+
+coord_flip()
+```
