@@ -111,7 +111,7 @@ O limite de cada cota varia de estado para estado, por exemplo o valor máximo q
 gastos_titulares %>% group_by(ideologia_simplificada, numAno) %>% 
 filter(numAno <= 2017 & numAno >= 2009) %>%
 summarise(Total = sum(vlrLiquido)/1000000) %>%
-ggplot(aes(x = ideologia_simplificada, y=reorder(Total))) + 
+ggplot(aes(x = reorder(ideologia_simplificada, Total), y=Total)) + 
 geom_histogram(stat = "identity") +
 facet_grid(numAno ~ .)+
 labs(x="Estado(UF)", y = "Total de gastos R$ (Em milhões)")+
