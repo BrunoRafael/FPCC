@@ -106,12 +106,26 @@ O repositório com os dados e o código usado nesta e em outras análises se enc
 
 ##Análise
 
-*Como funciona a variação de gastos entre direita e esquerda? Quem gasta mais?*
+*Como funciona a variação de gastos entre direita, esquerda e centro? Em qual delas os gastos variam mais? Quem gasta mais?*
 
 *Quais os partidos em que os deputados possuem maior diferença entre os gastos?*
 
 *Extra: Algum deputado extrapolou a cota de seu estado ao longo dos anos? Quanto o governo teve de pagar a mais e qual os deputados que mais extrapolaram?*
+```{r, warning=FALSE}
+gastos_titulares %>% group_by(ideologia_simplificada, txNomeParlamentar) %>% 
+filter(numAno <= 2017 & numAno >= 2009) %>%
+summarise(Total = count(ideologia_simplificada))
+ggplot(aes(x = reorder(ideologia_simplificada, Total), y=Total)) + 
+geom_histogram(stat = "identity") +
+labs(x="Estado(UF)", y = "Total de gastos R$ (Em milhões)")+
+coord_flip()
 
+gastos_titulares %>% group_by(ideologia_simplificada, txNomeParlamentar) %>% 
+filter(numAno <= 2017 & numAno >= 2009) %>% ggplot() + 
+  geom_bar(mapping = aes(x = ideologia_simplificada), stat = "count") + 
+  scale_y_continuous(formata_label)
+  coord_flip()
+```
 
 ```{r, warning=FALSE}
 gastos_titulares %>% group_by(ideologia_simplificada) %>% 
@@ -142,19 +156,19 @@ filter(numAno <= 2017 & numAno >= 2009) %>%
 summarise(Total = sum(vlrLiquido)/1000000) %>%
 ggplot(aes(x = reorder(ideologia_simplificada, Total), y=Total)) + 
 geom_histogram(stat = "identity") +
-facet_grid(numAno ~ .)+
-labs(x="Estado(UF)", y = "Total de gastos R$ (Em milhões)")+
-coord_flip()
+facet_grid(.~numAno)+
+theme(axis.text.x=element_text(angle=90,hjust=1,vjust=0.5))+
+labs(x="Ideologia", y = "Gastos R$ (em milhões)")
 
 ```
 
 ```{r, warning=FALSE}
 gastos_titulares %>% group_by(ideologia_simplificada, numAno) %>% 
-filter(numAno <= 2017 & numAno >= 2009) %>%
+filter(numAno == 2016) %>%
 ggplot(aes(x = ideologia_simplificada, y=vlrLiquido, fill=ideologia_simplificada)) + 
 geom_boxplot(alpha = 0.4)+
 scale_y_log10(labels=formata_label)+
-facet_grid(numAno ~ .)+
+facet_grid(ideologia_simplificada ~ .)+
 labs(x="Estado(UF)", y = "Total de gastos R$ (Em milhões)")+
 coord_flip()
 
@@ -163,11 +177,11 @@ coord_flip()
 
 ```{r, warning=FALSE}
 gastos_titulares %>% 
-  group_by(ideologia_simplificada, numAno) %>%
-  summarise(total=sum(vlrLiquido)/1000000) %>% 
-  arrange(numAno) %>%
-  ggplot(mapping = aes(x = ideologia_simplificada, y=total, fill = numAno)) + geom_bar(stat = "identity") +
-  coord_flip()+
-  theme(axis.text.x=element_text(angle=-90,hjust=1,vjust=0.5))+
-  labs(x = "Descrição dos gastos", y = "Gastos (R$ em milhões)", fill="Ano")+ scale_fill_continuous(breaks=unique(gastos_titulares$numAno))
+group_by(ideologia_simplificada, numAno) %>%
+summarise(total=sum(vlrLiquido)/1000000) %>% 
+arrange(numAno) %>%
+ggplot(mapping = aes(x = ideologia_simplificada, y=total, fill = numAno)) + geom_bar(stat = "identity") +
+coord_flip()+
+theme(axis.text.x=element_text(angle=-90,hjust=1,vjust=0.5))+
+labs(x = "Ideologia", y = "Gastos (R$ em milhões)", fill="Ano")+ scale_fill_continuous(breaks=unique(gastos_titulares$numAno))
 ```
