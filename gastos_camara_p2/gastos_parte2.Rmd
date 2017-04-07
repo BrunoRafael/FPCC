@@ -58,7 +58,6 @@ gastos <- gastos %>% rbind(gastos_2012)
 gastos <- gastos %>% rbind(gastos_2013)
 gastos <- gastos %>% rbind(gastos_2014)
 
-View(gastos)
 
 gastos <- gastos %>% right_join(ideologia, c("sgPartido" = "sigla_partido"))
 gastos <- gastos %>% select(-ideologia_nuancada, -ideol_tamanho_partido, -nome_partido)
@@ -78,7 +77,7 @@ gastos <- gastos %>%
 nomes_titulares <- deputados %>% filter(condicao=="Titular") %>% select(nomeParlamentar)
 nomes_suplentes <- deputados %>% filter(condicao=="Suplente") %>% select(nomeParlamentar)
 
-View(gastos_titulares) <- gastos %>% filter(txNomeParlamentar %in% nomes_titulares$nomeParlamentar)
+gastos_titulares <- gastos %>% filter(txNomeParlamentar %in% nomes_titulares$nomeParlamentar)
 gastos_suplentes <- gastos %>% filter(txNomeParlamentar %in% nomes_suplentes$nomeParlamentar)
 
 rm(gastos_2009)
@@ -110,20 +109,12 @@ O limite de cada cota varia de estado para estado, por exemplo o valor máximo q
 
 ```{r}
 gastos_titulares %>% group_by(ideologia_simplificada, numAno) %>% 
-filter(numAno > 2017 | numAno < 2009) %>%
+filter(numAno <= 2017 & numAno >= 2009) %>%
 summarise(Total = sum(vlrLiquido)/1000000) %>%
-ggplot(aes(x=ideologia_simplificada, y=Total)) + 
+ggplot(aes(x = ideologia_simplificada, y=reorder(Total))) + 
 geom_histogram(stat = "identity") +
 facet_grid(numAno ~ .)+
 labs(x="Estado(UF)", y = "Total de gastos R$ (Em milhões)")+
 coord_flip()
 
-gastos_titulares %>% group_by(ideologia_simplificada, numAno) %>% 
-summarise(Total = sum(vlrLiquido)/1000000) %>%
-ggplot(aes(x=sgUF, y=Total)) + 
-geom_boxplot(width = .3) +
-facet_grid(numAno ~ .)+
-geom_point(position = position_jitter(width = 0.1, height = 0), size = 2, alpha = 0.5)+
-labs(x="Estado(UF)", y = "Total de gastos R$ (Em milhões)")+
-coord_flip()
 ```
