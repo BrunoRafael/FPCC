@@ -1,7 +1,7 @@
 ---
 title: "Análise dos gastos da câmara dos deputados"
 author: "Bruno Rafael Araújo Vasconcelos"
-date: "31 de março de 2017"
+date: "07 de abril de 2017"
 output:
   html_document: default
   pdf_document: default
@@ -110,36 +110,56 @@ O repositório com os dados e o código usado nesta e em outras análises se enc
 
 *Quais os partidos em que os deputados possuem maior diferença entre os gastos?*
 
-*Extra: Algum deputado extrapolou a cota de seu estado ao longo dos anos? Quanto o governo teve de pagar a mais e qual os deputados que mais extrapolaram?*
-```{r, warning=FALSE}
-gastos_titulares %>% group_by(ideologia_simplificada, txNomeParlamentar) %>% 
-filter(numAno <= 2017 & numAno >= 2009) %>%
-summarise(Total = count(ideologia_simplificada))
-ggplot(aes(x = reorder(ideologia_simplificada, Total), y=Total)) + 
-geom_histogram(stat = "identity") +
-labs(x="Estado(UF)", y = "Total de gastos R$ (Em milhões)")+
-coord_flip()
+*Extra1 Houveram deputados de direita ou esquerda que extrapolaram o limite das cotas?*
 
-gastos_titulares %>% group_by(ideologia_simplificada, txNomeParlamentar) %>% 
-filter(numAno <= 2017 & numAno >= 2009) %>% ggplot() + 
-  geom_bar(mapping = aes(x = ideologia_simplificada), stat = "count") + 
-  scale_y_continuous(formata_label)
-  coord_flip()
-```
+*Extra2 Será que os gastos que houveram com partidos foram mais de esquerda ou direita?*
+
+Nos últimos anos os deputados apresentaram mudanças significativas na forma com que usam suas cotas.Desde 2013 que houve uma espécie de "mudança de comportamento" dos parlamentares, o número de deputados que passou a gastar menos cresceu embora isso não tenho afetado muito a variação de gastos, pelo gráfico abaixo dá pra perceber um maior número de pontos escuros do lado esquerdo a partir de 2013.
 
 ```{r, warning=FALSE}
-gastos_titulares %>% group_by(ideologia_simplificada) %>% 
-filter(numAno <= 2017 & numAno >= 2009) %>%
-summarise(Total = sum(vlrLiquido)) %>% View()
-ggplot(aes(x = reorder(ideologia_simplificada, Total), y=Total)) + 
-geom_histogram(stat = "identity") +
+gastos_titulares %>% group_by(ideologia_simplificada, numAno) %>% 
+filter(numAno >= 2009 & numAno < 2017) %>%
+ggplot(aes(x = ideologia_simplificada, y=vlrLiquido, fill=ideologia_simplificada)) + 
+geom_boxplot(alpha = 0.4)+
+scale_y_log10(labels=formata_label)+
+facet_grid(numAno ~ .)+
 labs(x="Estado(UF)", y = "Total de gastos R$ (Em milhões)")+
 coord_flip()
 ```
 
+Para termos uma visão melhor vamos observar a distância entre o maior e o menor valor representativo de cada gráfico. A estatística distância interquartil, abrange 50% de todos os valores das notas fiscais dos deputados. A variação de gastos, determinada pela estatística IQR vem aumentando para o centro desde 2012. Isto significa que os gastos dos deputados que se declaram de centro estão variando a cada ano. Já para a esquerda, a variação se manteve praticamente constante desde 2013. Veja o gráfico abaixo.
+
+```{r, warning=FALSE}
+gastos_titulares %>% group_by(ideologia_simplificada, numAno) %>% 
+filter(numAno >= 2009 & numAno < 2017) %>%
+summarise(IQR = IQR(vlrLiquido)) %>%
+ggplot(aes(x=numAno, y=IQR, fill=ideologia_simplificada)) + 
+geom_line() + geom_point(size=4, shape=21)+
+labs(x="Ano")
+```
+
+Uma coisa interessante a considerar é que a quantidade de deputados em cad aideologia varia. Por exemplo, o número de deputados que se declararam de esquerda no ano de 2015 foi de aproximadamente 125, enquanto que de direita foram mais de 200.Isso é importante pois não podemos simplesmente dizer que os deputados de direita gastam mais.
+
+```{r, warning=FALSE}
+g <- gastos_titulares %>% 
+  group_by(txNomeParlamentar, ideologia_simplificada, numAno) %>% 
+  summarise(Total = sum(vlrLiquido))
+
+g %>% group_by(ideologia_simplificada, numAno) %>% 
+filter(numAno < 2017 & numAno >= 2009) %>%
+ggplot(aes(x = as.factor(ideologia_simplificada), fill=as.factor(ideologia_simplificada))) + 
+geom_histogram(stat = "count", alpha=0.8) +
+facet_grid(.~numAno)+
+scale_y_continuous(labels=formata_label)+
+theme(axis.text.x=element_blank(),
+        axis.ticks.x=element_blank())+
+labs(x="Ideologia", y = "Deputados por ano", fill="Ideologia")
+```
+Em geral, a variação de gastos por ideologia se comporta de forma semelhante  ao longo dos anos. *75% dos gastos totais individuais desde 2009 dos parlamentares* estão abaixo de 1 bilhão de reais. 25% deles ultrapassam esse valor. É muito dinheiro sendo investido em apenas uma parcela da população brasileira. Abaixo dela (para a esquerda) estão os 75% que não chegaram a 1 bilhão, acima estão os que ultrapassaram este valor.
+
 ```{r, warning=FALSE}
 gastos_titulares %>% group_by(ideologia_simplificada) %>% 
-filter(numAno <= 2017 & numAno >= 2009) %>%
+filter(numAno < 2017 & numAno >= 2009) %>%
 ggplot(aes(x = ideologia_simplificada, y=vlrLiquido, fill=ideologia_simplificada)) + 
 geom_boxplot(alpha = 0.4)+
 scale_y_log10(labels=formata_label)+
@@ -148,40 +168,64 @@ coord_flip()
 ```
 
 
-Em valores absolutos, a direita é "campeã" em gastos desde 2009. A diferença total entre direita e esquerda chega a ser de 
+Em valores absolutos, a direita é "campeã" desde 2009. A diferença total entre direita e esquerda chega a ser de _____ em 2016. É uma diferença considerável 
 
 ```{r, warning=FALSE}
 gastos_titulares %>% group_by(ideologia_simplificada, numAno) %>% 
-filter(numAno <= 2017 & numAno >= 2009) %>%
+filter(numAno < 2017 & numAno >= 2009) %>%
 summarise(Total = sum(vlrLiquido)/1000000) %>%
 ggplot(aes(x = reorder(as.factor(ideologia_simplificada), Total), y=Total, fill=as.factor(ideologia_simplificada))) + 
 geom_histogram(stat = "identity") +
 facet_grid(.~numAno)+
-theme(axis.text.x=element_text(angle=-90,hjust=1,vjust=0.5))+
-labs(x="Ideologia", y = "Gastos R$ (em milhões)")
+theme(axis.text.x=element_blank(),
+        axis.ticks.x=element_blank())+
+labs(x="Ideologia", y = "Gastos R$ (em milhões)", fill="Ideologia")
 
 ```
 
-```{r, warning=FALSE}
-gastos_titulares %>% group_by(ideologia_simplificada, numAno) %>% 
-filter(numAno == 2016) %>%
-ggplot(aes(x = ideologia_simplificada, y=vlrLiquido, fill=ideologia_simplificada)) + 
-geom_boxplot(alpha = 0.4)+
-scale_y_log10(labels=formata_label)+
-facet_grid(ideologia_simplificada ~ .)+
-labs(x="Estado(UF)", y = "Total de gastos R$ (Em milhões)")+
-coord_flip()
-
-```
-
+A descoberta mais importante feita nessa análise talvez seja a de que os gastos com os deputados tem aumentado a cada ano. O que era de se esperar é que fosse diminuindo, mas na verdade está aumentando. O gráfico abaixo mostra o total desde 2009 e *fatiado* mostrando a proporção de gastos por ano. Para todas as ideologias o crescimento ocorreu.
 
 ```{r, warning=FALSE}
 gastos_titulares %>% 
 group_by(ideologia_simplificada, numAno) %>%
+filter(numAno < 2017 & numAno >= 2009) %>%
 summarise(total=sum(vlrLiquido)/1000000) %>% 
 arrange(numAno) %>%
 ggplot(mapping = aes(x = reorder(ideologia_simplificada, total), y=total, fill = numAno)) + geom_bar(stat = "identity") +
 coord_flip()+
 theme(axis.text.x=element_text(angle=-90,hjust=1,vjust=0.5))+
 labs(x = "Ideologia", y = "Gastos (R$ em milhões)", fill="Ano")+ scale_fill_continuous(breaks=unique(gastos_titulares$numAno), low="blue", high="orange")
+```
+
+##Avaliando os partidos
+
+Da mesma forma que as ideologias, os partidos brasileiros possuem discrepâncias em relação ao número total de parlamentares. 
+
+```{r, warning=FALSE}
+g <- gastos_titulares %>% 
+  group_by(txNomeParlamentar, sgPartido, numAno) %>% 
+  summarise(Total = sum(vlrLiquido))
+
+g %>% group_by(sgPartido, numAno) %>% 
+filter(numAno < 2017 & numAno >= 2009) %>%
+ggplot(aes(x = as.factor(sgPartido)), limits = positions) + 
+geom_histogram(stat = "count", alpha=0.8) +
+scale_y_continuous(labels=formata_label)+
+theme(axis.text.x=element_blank(),
+        axis.ticks.x=element_blank())+
+labs(x="Ideologia", y = "Deputados por ano", fill="Ideologia")
+```
+
+
+
+Avaliando o IQR que mede o nível de variação dos gastos o partido que apresentou maior valor foi o PROS, seguido de SD, PTB e PDT. Como já foi explicado, esse valor sugere uma discrepância da forma de gastar dos deputados
+
+```{r, warning=FALSE}
+gastos_titulares %>% group_by(sgPartido) %>% 
+filter(numAno >= 2009 & numAno < 2017) %>%
+summarise(IQR = IQR(vlrLiquido)) %>%
+ggplot(aes(x=reorder(sgPartido, IQR), y=IQR)) + 
+geom_line() + geom_point(size=4, shape=21)+
+labs(x="Ano")+
+coord_flip()
 ```
