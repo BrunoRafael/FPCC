@@ -11,7 +11,7 @@ output:
 library(dplyr, warn.conflicts = F)
 library(readr)
 library(ggplot2)
-
+library(knitr)
 ```
 
 ```{r, include=FALSE}
@@ -72,21 +72,35 @@ gastos <- gastos %>% select(-ideologia_nuancada, -ideol_tamanho_partido, -nome_p
 
 ```
 
-Consideramos aqui que se uma despesa foi feita em uma legislatura, mas só descontada da cota do deputado em um ano diferente após a legislatura, a despesa vai para o ano em que realmente foi descontada pois estamos interessados apenas em comparar os gastos entre esquerda e direita e não comparar os gastos anuais.
+Consideramos aqui que se uma despesa foi feita em uma legislatura, mas só descontada da cota do deputado em um ano diferente após a legislatura, a despesa vai para o ano em que realmente foi descontada pois estamos interessados apenas em comparar os gastos entre esquerda e direita e não comparar os gastos anuais. Outra coisa importante é que consideramos apenas os gastos dos deputados titulares para esta análise, pois os valores dos deputados titulares representam bem o que exatamente vem ocorrendo com as despesas com cotas no país.
 
 A tabela a seguir, mostra os problemas apresentados com os dados e o tratamento com eles.
+```{r, echo=FALSE}
+Problemas <- c("Observações sem nenhum valor", "Valores com mesmo significado \"Emissão Bilhete\" Aéreo e \"PASSAGENS AÉREAS\"",
+"Valor dos documentos fiscais relacionados a passagens aéreas negativos")
+Tratamentos <- c("Ocorrência ignorada.", "Os valores de \"Emissão Bilhete\" foram substituídas por \"PASSAGENS AÉREAS\".",
+"Todas as ocorrências em que o TOTAL de gastos do parlamentar é negativo significa que o valor indica um ressarcimento em que o parlamentar fez a compra mas não usufruiu dela e o valor no fim das contas não foi gasto. Portanto todas as ocorrências em que o total ficou abaixo de zero, foram descartadas.")
+frame <- data.frame(Problemas, Tratamentos)
+kable(frame)
+```
 
-```{r}
-gastos <- gastos %>% 
+```{r, warning=FALSE}
+gastos_filter <- gastos %>% 
   filter(!is.na(vlrLiquido)) %>%
   filter(!is.na(numAno)) %>%
   mutate(txtDescricao = ifelse(txtDescricao == "Emissão Bilhete Aéreo", "PASSAGENS AÉREAS", txtDescricao))
+ 
+gastos_filter <- gastos_filter %>% 
+  filter(complete.cases(gastos_filter))
+ 
+gastos_parlamentares <- gastos_filter %>% filter(!txNomeParlamentar %in% unique(sgPartido))
+gastos_partido <- gastos_filter %>% filter(txNomeParlamentar %in% unique(sgPartido))
 
 nomes_titulares <- deputados %>% filter(condicao=="Titular") %>% select(nomeParlamentar)
 nomes_suplentes <- deputados %>% filter(condicao=="Suplente") %>% select(nomeParlamentar)
 
-gastos_titulares <- gastos %>% filter(txNomeParlamentar %in% nomes_titulares$nomeParlamentar)
-gastos_suplentes <- gastos %>% filter(txNomeParlamentar %in% nomes_suplentes$nomeParlamentar)
+gastos_titulares <- gastos_parlamentares %>% filter(txNomeParlamentar %in% nomes_titulares$nomeParlamentar)
+gastos_suplentes <- gastos_parlamentares %>% filter(txNomeParlamentar %in% nomes_suplentes$nomeParlamentar)
 
 rm(gastos_2009)
 rm(gastos_2010)
@@ -100,7 +114,7 @@ rm(gastos_2014)
 
 Para avaliar os gastos públicos com deputados federais no Brasil, fizemos um estudo usando dados coletados pela própria câmara federal que demonstram com o que cada deputado gastou desde 2009. Vale lembrar que cada deputado possui uma cota, que é um limite de gastos fora o salário pago pelo próprio governo para manutenção do exercício de suas atividade. Dentre os gastos que podem ser incluídos nas cotas estão . Mais detalhes podem ser vistos [aqui](http://www2.camara.leg.br/comunicacao/assessoria-de-imprensa/cota-parlamentar)
 
-O limite de cada cota varia de estado para estado, por exemplo o valor máximo que um deputado pode gastar em Roraima é de ______ enquanto que na Paraíba é de ______. Só que podem existir parlamentares que são mais conscientes e que para não elevar as despesas públicas preferem não usar toda a cota disponível. Será que é alto o número de deputados que fazem isso? Será que eles fazem isso em anos/meses de eleição? E quanto aos gastos com passagens aéres? Como varia de estado para estado? Vamos tentar repsonder estas perguntas.
+O limite de cada cota varia de estado para estado, por exemplo o valor máximo que um deputado pode gastar em Roraima é de aproximadamente 45.000,00 enquanto que na Paraíba é de aproximadamente 42.000,00. Só que podem existir parlamentares que são mais conscientes e que para não elevar as despesas públicas preferem não usar toda a cota disponível. Será que é alto o número de deputados que fazem isso e que possuem uma ideologia? Como varia entre os partidos? Vamos tentar responder estas perguntas.
 
 O repositório com os dados e o código usado nesta e em outras análises se encontra [aqui](https://github.com/BrunoRafael/FPCC)
 
@@ -110,8 +124,7 @@ O repositório com os dados e o código usado nesta e em outras análises se enc
 
 *Quais os partidos em que os deputados possuem maior diferença entre os gastos?*
 
-*Extra1 Houveram deputados de direita ou esquerda que extrapolaram o limite das cotas?*
-
+*Extra1 Houveram deputados de direita, esquerda ou centro que extrapolaram o limite das cotas em 2016(ano de eleição)? E em 2015*
 *Extra2 Será que os gastos que houveram com partidos foram mais de esquerda ou direita?*
 
 Nos últimos anos os deputados apresentaram mudanças significativas na forma com que usam suas cotas.Desde 2013 que houve uma espécie de "mudança de comportamento" dos parlamentares, o número de deputados que passou a gastar menos cresceu embora isso não tenho afetado muito a variação de gastos, pelo gráfico abaixo dá pra perceber um maior número de pontos escuros do lado esquerdo a partir de 2013.
@@ -183,7 +196,7 @@ labs(x="Ideologia", y = "Gastos R$ (em milhões)", fill="Ideologia")
 
 ```
 
-A descoberta mais importante feita nessa análise talvez seja a de que os gastos com os deputados tem aumentado a cada ano. O que era de se esperar é que fosse diminuindo, mas na verdade está aumentando. O gráfico abaixo mostra o total desde 2009 e *fatiado* mostrando a proporção de gastos por ano. Para todas as ideologias o crescimento ocorreu.
+A descoberta mais importante feita nessa análise talvez seja a de que os gastos com os deputados tem aumentado a cada ano. O que era de se esperar é que fosse diminuindo, devido a crise econômica que o país atravessa, porém esse gráfico demonstra que está aumentando. O comprimento do retangulo representa todos os gastos desde 2009. Esse retangulo é  *fatiado* e cada fatia é a representação proporcional dos gastos de cada ano. Este crescimento ocorreu para todos os casos, centro, esquerda e direita.
 
 ```{r, warning=FALSE}
 gastos_titulares %>% 
@@ -199,7 +212,7 @@ labs(x = "Ideologia", y = "Gastos (R$ em milhões)", fill="Ano")+ scale_fill_con
 
 ##Avaliando os partidos
 
-Da mesma forma que as ideologias, os partidos brasileiros possuem discrepâncias em relação ao número total de parlamentares. 
+Da mesma forma que as ideologias, os partidos brasileiros possuem discrepâncias em relação ao número total de parlamentares. Do total de notas fiscais emitidas, 300 deputados do 
 
 ```{r, warning=FALSE}
 g <- gastos_titulares %>% 
@@ -208,17 +221,15 @@ g <- gastos_titulares %>%
 
 g %>% group_by(sgPartido, numAno) %>% 
 filter(numAno < 2017 & numAno >= 2009) %>%
-ggplot(aes(x = as.factor(sgPartido)), limits = positions) + 
+ggplot(aes(x = as.factor(sgPartido))) + 
 geom_histogram(stat = "count", alpha=0.8) +
 scale_y_continuous(labels=formata_label)+
-theme(axis.text.x=element_blank(),
-        axis.ticks.x=element_blank())+
-labs(x="Ideologia", y = "Deputados por ano", fill="Ideologia")
+theme(axis.text.x=element_text(angle=-90,hjust=1,vjust=0.5))+
+labs(x="Partido", y = "Deputados", fill="Ideologia")+
+coord_flip()
 ```
 
-
-
-Avaliando o IQR que mede o nível de variação dos gastos o partido que apresentou maior valor foi o PROS, seguido de SD, PTB e PDT. Como já foi explicado, esse valor sugere uma discrepância da forma de gastar dos deputados
+Avaliando o IQR que mede o nível de variação dos gastos, o partido que apresentou maior variação de gastos foi o PROS, seguido de SD, PTB e PDT. Quanto maior o IQR, maior será o intervalo em que os gastos se encontram para 50% dos deputados. 
 
 ```{r, warning=FALSE}
 gastos_titulares %>% group_by(sgPartido) %>% 
@@ -229,3 +240,80 @@ geom_line() + geom_point(size=4, shape=21)+
 labs(x="Ano")+
 coord_flip()
 ```
+
+## Novas perguntas
+Vamos agora dar uma olhada na extrapolação das cotas dos deputados segundo a sua ideologia. Será que direita, esquerda e centro vem extrapolando esses limites?
+
+```{r,warning=FALSE}
+gastos_titulares %>% 
+  group_by(txNomeParlamentar, sgUF, ideologia_simplificada, numMes, numAno) %>%
+  summarise(Total = sum(vlrLiquido)) %>%
+  right_join(cotas_por_estado, c("sgUF" = "estado")) %>%
+  filter(Total > valor)%>%
+  ggplot(aes(x=factor(ideologia_simplificada))) +
+  geom_histogram(stat = "count")+
+  labs(x="Ideologia", y="Total de vezes em que o limite mensal foi extrapolado")
+
+```
+
+E a resposta é sim! Parece ser uma coisa comum os deputados ultrapassarem os limites de suas cotas. O ano de 2016 foi o ano em que mais isso ocorreu. E mais uma vez os deputados que fazem parte de partidos de direita fizeram com mais frequencia. Mais uma vez a quantidade de deputados a mais que a esquerda e o centro pode fazer a diferença.
+```{r,warning=FALSE}
+gastos_titulares %>% 
+  group_by(txNomeParlamentar, sgUF, ideologia_simplificada, numMes, numAno) %>%
+  summarise(Total = sum(vlrLiquido)) %>%
+  right_join(cotas_por_estado, c("sgUF" = "estado")) %>%
+  filter(Total > valor)%>%
+  ggplot(aes(x=factor(numAno))) +
+  geom_histogram(stat = "count")+
+  labs(x="Ano", y="Total de vezes em que o limite foi extrapolado por ano")+
+  coord_flip()
+
+```
+
+Vamos dar uma breve olhada nos dados coletados em 2015 e 2016. Lembrando que 2016 foi ano de eleição. A intenção é ver se os deputados extrapolaram durante os meses desses dois anos.
+
+```{r,warning=FALSE}
+gastos_titulares %>% 
+  group_by(txNomeParlamentar, sgUF, ideologia_simplificada, numAno, numMes) %>%
+  filter(numAno == 2015) %>%
+  summarise(Total = sum(vlrLiquido)) %>%
+  right_join(cotas_por_estado, c("sgUF" = "estado")) %>%
+  filter(Total > valor)%>%
+  ggplot(aes(x = ideologia_simplificada, y=Total)) + 
+  geom_boxplot(alpha = 0.4)+
+  ggtitle("2015")+
+  facet_grid(numMes~.)+
+  labs(x="Ideologia", y="Total de vezes em que o limite mensal foi extrapolado")+
+  scale_y_continuous(labels=formata_label)+
+  coord_flip()
+```
+
+```{r,warning=FALSE}
+gastos_titulares %>% 
+  group_by(txNomeParlamentar, sgUF, ideologia_simplificada, numAno, numMes) %>%
+  filter(numAno == 2016) %>%
+  summarise(Total = sum(vlrLiquido)) %>%
+  right_join(cotas_por_estado, c("sgUF" = "estado")) %>%
+  filter(Total > valor)%>%
+  filter(Total == min(Total) & numMes== 12 & ideologia_simplificada=="direita") %>%
+  View()
+  
+  
+  
+  right_join(cotas_por_estado, c("sgUF" = "estado")) %>%
+  filter(Total > valor)%>%
+  ggplot(aes(x = ideologia_simplificada, y=Total)) + 
+  ggtitle("2016")+
+  geom_boxplot(alpha = 0.4)+
+  facet_grid(numMes~.)+
+  labs(x="Ideologia", y="Total mensal R$")+
+  scale_y_continuous(labels=formata_label)+
+  coord_flip()
+```
+
+No mês de dezembro, a variação dos gastos são maiores que nos outros meses em ambos os anos. A mediana (linha preta dentro dos retangulos) permanece no início dos gráficos e eles são esticados indicando uma variação de gastos, algum deputado gastou mais que os outros e é por isso o esticamento na figura. No mínimo no mês de dezembro um  deputado de direita gastou
+
+##Avaliando os gastos considerados do partido e não do parlamentar
+
+
+##Conclusão
