@@ -93,8 +93,12 @@ gastos_filter <- gastos %>%
 gastos_filter <- gastos_filter %>% 
   filter(complete.cases(gastos_filter))
  
-gastos_parlamentares <- gastos_filter %>% filter(!txNomeParlamentar %in% unique(sgPartido))
-gastos_partido <- gastos_filter %>% filter(txNomeParlamentar %in% unique(sgPartido))
+gastos_parlamentares <- gastos_filter %>% filter(!txNomeParlamentar %in% unique(sgPartido)) %>%
+filter(numAno < 2017 & numAno > 2008)
+
+gastos_partido <- gastos_filter %>% 
+filter(txNomeParlamentar %in% unique(sgPartido)) %>%
+filter(!txNomeParlamentar %in% unique(sgPartido))
 
 nomes_titulares <- deputados %>% filter(condicao=="Titular") %>% select(nomeParlamentar)
 nomes_suplentes <- deputados %>% filter(condicao=="Suplente") %>% select(nomeParlamentar)
@@ -151,7 +155,7 @@ geom_line() + geom_point(size=4, shape=21)+
 labs(x="Ano")
 ```
 
-Uma coisa interessante a considerar é que a quantidade de deputados em cad aideologia varia. Por exemplo, o número de deputados que se declararam de esquerda no ano de 2015 foi de aproximadamente 125, enquanto que de direita foram mais de 200.Isso é importante pois não podemos simplesmente dizer que os deputados de direita gastam mais.
+Uma coisa interessante a considerar é que a quantidade de deputados em cada ideologia varia. Por exemplo, o número de deputados que se declararam de esquerda no ano de 2015 foi de aproximadamente 125, enquanto que de direita foram mais de 200.Isso é importante pois não podemos simplesmente dizer que os deputados de direita gastam mais.
 
 ```{r, warning=FALSE}
 g <- gastos_titulares %>% 
@@ -252,7 +256,7 @@ gastos_titulares %>%
   filter(Total > valor)%>%
   ggplot(aes(x=factor(ideologia_simplificada))) +
   geom_histogram(stat = "count")+
-  labs(x="Ideologia", y="Total de vezes em que o limite mensal foi extrapolado")
+  labs(x="Ideologia", y="Nº de vezes em que o limite mensal foi extrapolado")
 
 ```
 
@@ -265,7 +269,7 @@ gastos_titulares %>%
   filter(Total > valor)%>%
   ggplot(aes(x=factor(numAno))) +
   geom_histogram(stat = "count")+
-  labs(x="Ano", y="Total de vezes em que o limite foi extrapolado por ano")+
+  labs(x="Ano", y="N] de vezes em que o limite foi extrapolado por ano")+
   coord_flip()
 
 ```
@@ -284,29 +288,6 @@ gastos_titulares %>%
   ggtitle("2015")+
   facet_grid(numMes~.)+
   labs(x="Ideologia", y="Total de vezes em que o limite mensal foi extrapolado")+
-  scale_y_continuous(labels=formata_label)+
-  coord_flip()
-```
-
-```{r,warning=FALSE}
-gastos_titulares %>% 
-  group_by(txNomeParlamentar, sgUF, ideologia_simplificada, numAno, numMes) %>%
-  filter(numAno == 2016) %>%
-  summarise(Total = sum(vlrLiquido)) %>%
-  right_join(cotas_por_estado, c("sgUF" = "estado")) %>%
-  filter(Total > valor)%>%
-  filter(Total == min(Total) & numMes== 12 & ideologia_simplificada=="direita") %>%
-  View()
-  
-  
-  
-  right_join(cotas_por_estado, c("sgUF" = "estado")) %>%
-  filter(Total > valor)%>%
-  ggplot(aes(x = ideologia_simplificada, y=Total)) + 
-  ggtitle("2016")+
-  geom_boxplot(alpha = 0.4)+
-  facet_grid(numMes~.)+
-  labs(x="Ideologia", y="Total mensal R$")+
   scale_y_continuous(labels=formata_label)+
   coord_flip()
 ```

@@ -1,0 +1,151 @@
+---
+title: "Restore graphics"
+author: "Bruno Rafael"
+date: "15 de abril de 2017"
+output: html_document
+---
+
+```{r setup, include=FALSE, echo=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(dplyr, warn.conflicts = F)
+library(readr)
+library(ggplot2)
+library(knitr)
+
+```
+
+##R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r, include=FALSE, warning=FALSE, echo=FALSE}
+formata_label = function(l){
+  # existem funções para formatar com , sendo milhar e . sendo decimal (scales::comma)
+  # mas em pt_br é o contrário. essa função serve para isso
+  format(l, big.mark = ".", scientific = FALSE, trim = TRUE, decimal.mark = ",")
+} 
+
+gastos_2009 <- read_csv2("dados//Ano-2009.csv") %>% 
+  select(sgPartido, txNomeParlamentar, txtDescricao, 
+         vlrLiquido, nuLegislatura, codLegislatura, 
+         sgUF, numMes, numAno)
+
+gastos_2010 <- read_csv2("dados//Ano-2010.csv") %>% 
+  select(sgPartido, txNomeParlamentar, txtDescricao, 
+         vlrLiquido, nuLegislatura, codLegislatura, 
+         sgUF, numMes, numAno)
+
+gastos_2011 <- read_csv2("dados//Ano-2011.csv") %>% 
+  select(sgPartido, txNomeParlamentar, txtDescricao, 
+         vlrLiquido, nuLegislatura, codLegislatura, 
+         sgUF, numMes, numAno)
+
+gastos_2012 <- read_csv2("dados//Ano-2012.csv") %>% 
+  select(sgPartido, txNomeParlamentar, txtDescricao, 
+         vlrLiquido, nuLegislatura, codLegislatura, 
+         sgUF, numMes, numAno)
+
+gastos_2013 <- read_csv2("dados//Ano-2013.csv")%>% 
+  select(sgPartido, txNomeParlamentar, txtDescricao, 
+         vlrLiquido, nuLegislatura, codLegislatura, 
+         sgUF, numMes, numAno)
+
+gastos_2014 <- read_csv2("dados//Ano-2014.csv")%>% 
+  select(sgPartido, txNomeParlamentar, txtDescricao, 
+         vlrLiquido, nuLegislatura, codLegislatura, 
+         sgUF, numMes, numAno)
+
+gastos <- read_csv("dados//gastos-cota_atividade_parlamentar.csv") %>%
+  select(sgPartido, txNomeParlamentar, txtDescricao, 
+         vlrLiquido, nuLegislatura, codLegislatura, 
+         sgUF, numMes, numAno)
+cotas_por_estado <- read_csv2("dados//valor-cota-por-estado.csv")
+deputados <- read_csv("dados//deputados-detalhes.csv")
+ideologia <- read_csv("dados//partido-ideologias-observatorio_das_elites.csv")
+
+gastos <- gastos %>% rbind(gastos_2009)
+gastos <- gastos %>% rbind(gastos_2010)
+gastos <- gastos %>% rbind(gastos_2011)
+gastos <- gastos %>% rbind(gastos_2012)
+gastos <- gastos %>% rbind(gastos_2013)
+gastos <- gastos %>% rbind(gastos_2014)
+
+
+gastos <- gastos %>% right_join(ideologia, c("sgPartido" = "sigla_partido"))
+gastos <- gastos %>% select(-ideologia_nuancada, -ideol_tamanho_partido, -nome_partido)
+
+Problemas <- c("Observações sem nenhum valor", "Valores com mesmo significado \"Emissão Bilhete\" Aéreo e \"PASSAGENS AÉREAS\"",
+               "Valor dos documentos fiscais relacionados a passagens aéreas negativos")
+Tratamentos <- c("Ocorrência ignorada.", "Os valores de \"Emissão Bilhete\" foram substituídas por \"PASSAGENS AÉREAS\".",
+                 "Todas as ocorrências em que o TOTAL de gastos do parlamentar é negativo significa que o valor indica um ressarcimento em que o parlamentar fez a compra mas não usufruiu dela e o valor no fim das contas não foi gasto. Portanto todas as ocorrências em que o total ficou abaixo de zero, foram descartadas.")
+frame <- data.frame(Problemas, Tratamentos)
+kable(frame)
+
+gastos_filter <- gastos %>% 
+  filter(!is.na(vlrLiquido)) %>%
+  filter(!is.na(numAno)) %>%
+  mutate(txtDescricao = ifelse(txtDescricao == "Emissão Bilhete Aéreo", "PASSAGENS AÉREAS", txtDescricao))
+
+gastos_filter <- gastos_filter %>% 
+  filter(complete.cases(gastos_filter))
+
+gastos_parlamentares <- gastos_filter %>% filter(!txNomeParlamentar %in% unique(sgPartido))
+gastos_partido <- gastos_filter %>% filter(txNomeParlamentar %in% unique(sgPartido))
+
+nomes_titulares <- deputados %>% filter(condicao=="Titular") %>% select(nomeParlamentar)
+nomes_suplentes <- deputados %>% filter(condicao=="Suplente") %>% select(nomeParlamentar)
+
+gastos_titulares <- gastos_parlamentares %>% filter(txNomeParlamentar %in% nomes_titulares$nomeParlamentar)
+gastos_suplentes <- gastos_parlamentares %>% filter(txNomeParlamentar %in% nomes_suplentes$nomeParlamentar)
+
+rm(gastos_2009)
+rm(gastos_2010)
+rm(gastos_2011)
+rm(gastos_2012)
+rm(gastos_2013)
+rm(gastos_2014)
+```
+
+```{r, warning=FALSE, echo=FALSE}
+
+g <- gastos_titulares %>% group_by(ideologia_simplificada, txNomeParlamentar,numAno) %>% filter(numAno < 2017 & numAno >= 2009) %>% summarise(Total = n()) %>% select(-Total) %>%
+group_by(ideologia_simplificada, numAno) %>% summarise(Count = n())
+  
+k <-  gastos_titulares %>% group_by(ideologia_simplificada, numAno) %>% 
+filter(numAno < 2017 & numAno >= 2009) %>%
+summarise(Total = sum(vlrLiquido)/1000000)
+
+merge <- k %>% right_join(g, c("ideologia_simplificada", "numAno"), c("ideologia_simplificada", "numAno"))
+
+merge %>%
+ggplot(aes(x = numAno, 
+             y = Total, 
+             colour = as.factor(ideologia_simplificada))) + 
+geom_point(alpha = .7)+
+geom_count(aes(size = Count))+
+geom_line()+
+labs(x="Ano", y = "Gastos R$ (em milhões)", colour="Ideologia", size = "Nº de deputados por ideologia")+
+scale_x_continuous(breaks=unique(gastos_titulares$numAno))
+  
+```
+
+
+
+```{r, warning=FALSE, echo=FALSE}
+gastos_titulares %>% 
+  group_by(ideologia_simplificada, numAno) %>%
+  filter(numAno < 2017 & numAno >= 2009) %>%
+  summarise(total=sum(vlrLiquido)/1000000) %>% 
+  arrange(numAno) %>%
+  ggplot(mapping = aes(x = reorder(ideologia_simplificada, total), y=total, fill = numAno)) + geom_bar(stat = "identity") +
+  coord_flip()+
+  theme(axis.text.x=element_text(angle=-90,hjust=1,vjust=0.5))+
+  labs(x = "Ideologia", y = "Gastos (R$ em milhões)", fill="Ano")+ scale_fill_continuous(breaks=unique(gastos_titulares$numAno), low="blue", high="orange")
+```
+
+# Plots
+You can also embed plots, for example:
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
