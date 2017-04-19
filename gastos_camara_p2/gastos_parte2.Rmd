@@ -194,10 +194,10 @@ summarise(Total = sum(vlrLiquido)/1000000) %>%
 ggplot(aes(x = reorder(as.factor(ideologia_simplificada), Total), y=Total, fill=as.factor(ideologia_simplificada))) + 
 geom_histogram(stat = "identity") +
 facet_grid(.~numAno)+
+labs(y = "Gastos R$ (em milhões)", fill="Ideologia")+
 theme(axis.text.x=element_blank(),
-        axis.ticks.x=element_blank())+
-labs(x="Ideologia", y = "Gastos R$ (em milhões)", fill="Ideologia")
-
+        axis.ticks.x=element_blank(),
+      axis.title.x=element_blank())
 ```
 
 A descoberta mais importante feita nessa análise talvez seja a de que os gastos com os deputados tem aumentado a cada ano. O que era de se esperar é que fosse diminuindo, devido a crise econômica que o país atravessa, porém esse gráfico demonstra que está aumentando. O comprimento do retangulo representa todos os gastos desde 2009. Esse retangulo é  *fatiado* e cada fatia é a representação proporcional dos gastos de cada ano. Este crescimento ocorreu para todos os casos, centro, esquerda e direita.

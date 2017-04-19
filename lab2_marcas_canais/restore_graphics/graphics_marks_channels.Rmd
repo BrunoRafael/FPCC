@@ -120,19 +120,43 @@ summarise(Total = sum(vlrLiquido)/1000000)
 
 merge <- k %>% right_join(g, c("ideologia_simplificada", "numAno"), c("ideologia_simplificada", "numAno"))
 
-merge %>%
+g <- merge %>%
 ggplot(aes(x = numAno, 
              y = Total, 
              colour = as.factor(ideologia_simplificada))) + 
 geom_point(alpha = .7)+
 geom_count(aes(size = Count))+
 geom_line()+
-labs(x="Ano", y = "Gastos R$ (em milhões)", colour="Ideologia", size = "Nº de deputados por ideologia")+
+scale_color_discrete(labels=c("centro" = "Center","direita" = "Right-wing","esquerda"="Left-wing"))+
+theme(text = element_text(size=7),
+      axis.title.x = element_blank())+
+labs(y = "Spending R$ (in milions)", colour="Ideology", size = "No. of \ndeputies")+
 scale_x_continuous(breaks=unique(gastos_titulares$numAno))
+
+print(g)
+ggsave("restored_graph.pdf", width = 4.5, height = 3, bg = "transparent")
   
 ```
 
 
+```{r, warning=FALSE}
+p <- gastos_titulares %>% group_by(ideologia_simplificada, numAno) %>% 
+filter(numAno < 2017 & numAno >= 2009) %>%
+summarise(Total = sum(vlrLiquido)/1000000) %>%
+ggplot(aes(x = reorder(as.factor(ideologia_simplificada), Total), y=Total, fill=as.factor(ideologia_simplificada))) + 
+scale_fill_discrete(labels=c("centro" = "Center","direita" = "Right-wing","esquerda"="Left-wing"))+
+geom_histogram(stat = "identity") +
+facet_grid(.~numAno)+
+theme(axis.text.x=element_blank(),
+        axis.ticks.x=element_blank(),
+      axis.title.x=element_blank(),
+      text = element_text(size=7))+
+labs(y = "Spending R$ (in milions)", fill="Ideology")
+
+print(p)
+ggsave("last_graph.pdf", width = 4.5, height = 2, bg = "transparent")
+
+```
 
 ```{r, warning=FALSE, echo=FALSE}
 gastos_reais_por_estado <- gastos_titulares_nordeste_last_3_years %>% 
@@ -162,7 +186,6 @@ gastos_reais_por_estado %>%
   facet_grid(.~numAno)+
   labs(x="Estado", y = "Gastos R$ (em milhões)")
 ```
-
 # Plots
 You can also embed plots, for example:
 
