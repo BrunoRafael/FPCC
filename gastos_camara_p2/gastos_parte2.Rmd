@@ -269,7 +269,7 @@ gastos_titulares %>%
   filter(Total > valor)%>%
   ggplot(aes(x=factor(numAno))) +
   geom_histogram(stat = "count")+
-  labs(x="Ano", y="N] de vezes em que o limite foi extrapolado por ano")+
+  labs(x="Ano", y="Nº de vezes em que o limite foi extrapolado por ano")+
   coord_flip()
 
 ```

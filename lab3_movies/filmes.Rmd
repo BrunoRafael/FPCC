@@ -1,5 +1,5 @@
 ---
-title: "filmes"
+title: "Análise da popularidade de filmes segundo o número de faces em sua capa principal"
 author: "Bruno Vasconcelos"
 date: "26 de abril de 2017"
 output: html_document
@@ -7,26 +7,411 @@ output: html_document
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
-library(ggplot2movies)
 library(dplyr)
 library(ggplot2)
 library(readr)
+library(ggdendro)
+library(ggplot2movies)
+library(jsonlite)
+library(RecordLinkage)
+library(tidyverse, warn.conflicts = F)
+library(rvest)
+library(plotly)
+library(cluster)
+library (vegan)
+library(broom)
+
+source("plot_hclust.R")
+
+formata_label = function(l){
+  # existem funções para formatar com , sendo milhar e . sendo decimal (scales::comma)
+  # mas em pt_br é o contrário. essa função serve para isso
+  format(l, big.mark = ".", scientific = FALSE, trim = TRUE, decimal.mark = ",")
+} 
+theme_set(theme_bw())
 ```
 
-## R Markdown
 
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+Nosso objetivo com esta pesquisa é analisar filmes do ponto de vista de avaliações do site IMDB(LINK)
+Queremos analisar a influência do número de faces na capa de um filme em sua popularidade. São cerca de 5600 filmes datados desde o século passado e que podem ser avaliados no site a [imdb]
 
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+## Sobre o Kaggle
+O Kaggle é uma plataforma online que conecta pessoas com problemas a pessoas que podem resolver estes problemas do ponto de vista da ciência dos dados.
 
-## Including Plots
+<!-- Select variables -->
 
-You can also embed plots, for example:
+Todas as informações para esta pesquisa se encontram no site da [kaggle](https://www.kaggle.com/deepmatrix/imdb-5000-movie-dataset) e o estudo foi baseado nos resultados da [pesquisa](https://blog.nycdatascience.com/student-works/machine-learning/movie-rating-prediction/) do cientista de dados [Chuan Sun](https://blog.nycdatascience.com/author/sundeepblue/)
 
-```{r pressure, echo=FALSE}
-movies %>% View()
-movies2 <- read_csv(url("https://raw.githubusercontent.com/sundeepblue/movie_rating_prediction/master/movie_metadata.csv"))
-View(movies2)
+<!-- 
+title_year, movie_facebook_likes, imdb_score, facenumber_in_poster, movie_title 
+-->
+
+##Introdução
+A princípio esta pesquisa se limita a avaliar os dados e verificar se há problemas na consistência dos mesmos. Buscamos responder a seguinte pergunta sobre os dados do imdb:
+
+Quanto maior o número de faces na capa de um filme maior será sua popularidade? E quanto as notas de avaliações recebidas no imdb, crescem ou diminuem em relação ao número de rostos nos posters?
+
+Um filme para nós possui um conjunto de informações como por exemplo, 
+
+O ano de lançamento do filme;
+Média das avaliações dos usuários do IMDB(score);
+Número de usuários que votaram no filme;
+O número de faces no poster principal do filme.
+O número de likes que o filme teve em sua página no facebook;
+O título do filme (300, Duro de matar 4, O dia depois de amanhã, etc);
+
+Uma coisa que fizemos com os dados foi remover todos os filmes cujas capas não puderam ser avaliadas já que nosso estudo está relacionado com o número de faces nas capas, ou seja, os filmes em que o algoritmo não detectou bem o número de faces foram removidos do conjunto de dados.
+
+Uma outra coisa a se destacar é que o algoritmo mais usado, por apresentar um melhor desempenho foi um algoritmo hierárquico o hclust com distância euclidiana entre os pontos. Sempre que um outro algoritmo de agrupamento for usado, ele será especificado no momento do seu uso.
+
+```{r pressure, include=FALSE}
+movies_csv <- read_csv(url("https://raw.githubusercontent.com/sundeepblue/movie_rating_prediction/master/movie_metadata.csv"))
+
+#movies_csv <- movies_csv %>% filter(director_name %in% c("Steven Spielberg", "Tim Burton"))
+
+movies_na <- movies_csv %>% filter(is.na(title_year)) %>% 
+  mutate(title_year = "Desconhecido")
+
+movies_json_data <- jsonlite::fromJSON(url("https://raw.githubusercontent.com/sundeepblue/movie_rating_prediction/master/movie_budget.json"), simplifyDataFrame = TRUE)
+
+movies_k <- movies_csv %>% 
+  filter(!is.na(title_year)) %>%
+  filter(!is.na(facenumber_in_poster)) %>%
+  select(movie_title, title_year, movie_facebook_likes, imdb_score, facenumber_in_poster) %>% unique()
+
+movies_k2 <- movies_csv %>% 
+  filter(!is.na(title_year)) %>%
+  select(movie_title, title_year, movie_facebook_likes, imdb_score, facenumber_in_poster, num_voted_users) %>% unique()
+
+movies_repeated_column_names <- movies_k %>% group_by(movie_title)%>% summarise(n = n()) %>%filter(n>1)
+
+movies_repeated_column_names <- movies_repeated_column_names$movie_title
+
+movies_k <- movies_k %>%
+mutate(movie_title = ifelse(movie_title %in% movies_repeated_column_names, paste(movie_title, paste(title_year, ")" , sep=""), sep="("), movie_title))
+
+movies_repeated_column_names <- movies_k %>% group_by(movie_title)%>%
+summarise(n = n()) %>% filter(n>1) 
+movies_repeated_column_names <- movies_repeated_column_names$movie_title
+
+movies_k <- movies_k %>% 
+            mutate(imdb_score = ifelse(movie_title %in% movies_repeated_column_names, 6.1, imdb_score))
+
+movies_k <- unique(movies_k)
+
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+## O ano de lançamento do filme
+O ano de lançamento do filme indica o ano de estréia do filme em seu país de origem. O filme mais antigo registrado na base de dados que estamos usando é de 1916 *Intolerance: Love's Struggle Throughout the Ages* que na versão em português o título é apenas *Intolerância* dirigido por D.W. Griffith.
+
+```{r, warning=FALSE, echo=FALSE}
+movies_k %>% 
+    ggplot(aes(x = "Filmes", y = title_year)) + 
+    geom_violin()+
+    geom_jitter(width = .06, height = 0, size = .8, alpha = .6)+
+    scale_y_continuous(breaks=seq(min(movies_k$title_year), max(movies_k$title_year), by=10))+
+    labs(x="", y = "Ano",  color="Grupo")
+```
+
+Perceba que o gráfico vai se distorcendo horizontalmente ao longo dos anos(vertical). Quanto mais distorcido, maior a frequência de filmes produzido em determinado ano. Note que a produção de filmes se expandiu de forma intensa a partir da segunda metade da década de 60 e "explodiu" a partir da segunda metade da década de 80. A década de 60 foi marcada por diversos [avanços tecnológicos]() no contexto cinematográfico e evoluiu mais e mais com o passar dos anos. Isso explica o crescimento gradativo da quantidade de filmes produzidos.
+
+Por este outro gráfico é possível perceber em porcentagem a quantidade de filmes produzidos.
+```{r, warning=FALSE, echo=FALSE}
+movies_k %>% 
+    ggplot(aes(x = "Filmes", y = title_year)) + 
+    geom_boxplot()+
+    scale_y_continuous(breaks=seq(min(movies_k$title_year), max(movies_k$title_year), by=10))+
+    labs(x="", y = "Ano",  color="Grupo")
+```
+A linha escura no retângulo divide pela metade a quantidade de filmes produzidos ao longo dos anos. Ou seja, 50% de todos os filmes desde 1916 foram produzidos um pouco antes de 2006, enquanto que a outra metade está distribuida ao longo de quase 100 anos. Perceba como a quantidade de filmes produzida hoje é superior a quantidade produzida no passado. Em aproximadamente 10 anos se produziu praticamente a mesma quantidade de filmes que em 96 anos. Tudo graças aos avanços científicos e tecnológicos.
+
+##Score e Número de usuários que votaram no filme;
+As avaliações numéricas no IMDB consistem de uma nota de 0 a 10 dada pelos usuários. O número na verdade é a média de todas as notas dadas pelos usuários aquele filme. A partir daqui chamaremos este valor de **score**. 
+
+```{r, warning=FALSE, echo=FALSE}
+movies_k %>% 
+    ggplot(aes(x = "Filmes", y = imdb_score)) + 
+    geom_boxplot()+
+    geom_jitter(width = .06, height = 0, size = .8, alpha = .6)+
+    scale_y_continuous(labels=formata_label)+
+    labs(x="", y = "Nota no imdb",  color="Grupo")
+```
+
+Perceba que a parte mais negra do gráfico, onde se concentram a maior parte dos filmes, está próxima da linha escura que divide o retângulo. As avaliações para este caso se concentram ao redor da mediana do score. A mediana é o número que divide uma sequêcia de números em duas partes iguais, ou seja, se ordenarmos todos os scores dos filmes, a mediana é o score que divide toda a sequência em duas partes iguais.
+
+Ex: Sequencia -> 5, 8, 1, 6, 10
+    Sequencia ordenada -> 1, 5, 6, 8, 10
+    Mediana -> 6
+
+Porém percebemos algo estranho nestes dados, pois o filme mais bem avaliado é a produção canadense *Towering Inferno* dirigido por *John Blanchard* possui nota 9.5 e tem apenas 10 avaliações. A melhor coisa a fazer é avaliar os filmes sob a perspectiva tanto do score quanto do número de avaliações.
+
+```{r, warning=FALSE, echo=FALSE}
+  movies_csv %>% 
+    ggplot(aes(x = "Filmes", y = num_voted_users)) + 
+    geom_jitter(width = .1, height = 0, size = 1, alpha = .4)+
+    scale_y_continuous(labels=formata_label)+
+    labs(x="", y = "Número de likes",  color="Grupo")
+  
+```
+
+Poucos filmes possuem um número de likes superior a quinhentos mil. O filme mais avaliado pelos usuários do imdb foi o filme *The Shawshank Redemption*. Em português foi traduzido como *Um sonho de liberdade* do diretor *Frank Darabont* com o ator principal sendo *Morgan Freeman*.
+
+```{r, warning=FALSE, echo=FALSE}
+movies_csv %>% mutate() %>%
+    ggplot(aes(x = imdb_score, y=num_voted_users)) + 
+    geom_jitter(width = .06, height = 0, size = .8, alpha = .6)+
+    scale_x_continuous(breaks = 1:10)+
+    scale_y_continuous(labels=formata_label)+
+    labs(x="Score", y = "Nº de avaliadores",  color="Grupo")
+```
+
+O filme mais a direita e mais acima do gráfico é o filme considerado mais bem avaliado no imdb, pois indica que é um filme com alto números de avaliações e com um score alto. O ponto mais a direita e mais acima do gráfico anterior é *Um sonho de liberdade* com nota 9.3 e com mais de 1 milhão e meio de avaliações.
+
+#Agrupando filmes
+
+Para respondermos a pergunta principal desta pesquisa, precisamos agrupar os filmes segundo as métricas de suas avaliações. Até agora, o que fizemos foi analisar as avaliações segundo métricas definidas na seção X que indicam alguma informação sobre as avaliações dos filmes. Para entender como funciona a popularidade dos filmes precisamos ver que em relação ao **ano do filme** podemos analisar a popularidade de filmes mais velhos e mais antigos, em relação ao score podemos ver a popularidade em relação aos filmes mais bem avaliados ou mal avaliados. Perceba que precisamos dividir os filmes em grupos os "Bem avaliados" e os "Mal avaliados". É isto que faremos nesta seção.
+
+## Agrupando Pelo ano de lançamento
+Vamos executar alguns passos de computação para fazer com que o computador faça agrupamento dos dados para nós. Para isso vamos testar uma coisa importante, teremos que agrupar nossos dados em quantos grupos exatamente? Três grupos são suficientes para o que queremos: **Mais novos, Antigos e Muito antigos**
+
+```{r, warning=FALSE, echo=FALSE}
+  plot_hclust_data(data=movies_k, group_distance_method="euclidian", clust_distance_method = "ward.D", group_column = "title_year", ks=1:6)+
+  scale_y_continuous(breaks=seq(min(movies_k$title_year), max(movies_k$title_year), by=10))+
+  labs(x="", y="Ano",  color="Grupo")
+  
+```
+Filmes considerados **Mais novos** são filmes de 2006 até atualmente. Enquanto de 1996 a antes de 2006 são considerados filmes **Antigos**. Abaixo de 1996 são os filmes **Muito antigos**.
+
+
+Pelo gráfico abaixo conseguimos ter uma medida matemática que expresse o quão cada ponto foi bem agrupado. O agrupamento consiste justamente em ajuntar pontos semelhantes segundo alguma característica. Quanto mais os pontos são bem classificados mas eles se parecem uns com os outros e não se parecem com os pontos de outros grupos. Matematicamente temos que dada a distância média de um ponto $i$ para os demais do seu grupo $a(i)$ e a distância média desse mesmo ponto para os demais pontos de outro grupo$a(i)$ temos que a medida de largura da silhoueta $i$ é dada por:
+\[
+s(i) := ( b(i) - a(i) ) / max( a(i), b(i) )
+\]
+
+```{r, warning=FALSE, echo=FALSE}
+dists <- movies_k %>%
+    select(title_year) %>%
+    dist()
+km <- kmeans(select(movies_k, title_year), 
+            centers = 4, 
+            nstart = 10)
+plot(silhouette(km$cluster, dists), col= RColorBrewer::brewer.pal(4, "Set2"), border=NA)
+```
+Onde $S(i)$ será sempre um valor entre -1 e 1.
+
+Quanto mais próximo de 1 for o valor da silhoueta de $i$ mas o ponto $i$ será semelhante aos pontos do seu grupo. Quanto mais próximo de -1 for o valor da silhoueta mas esse ponto é diferente dos pontos do grupo no qual foi inserido.
+
+Perceba que neste caso todos os valores das silhouetas foram maiores que zero, o que indica que foram selecionados bem em seus grupos.
+
+A partir deste ponto usaremos o gráfico da silhoueta para validar o agrupamento dos pontos pelo algoritmo de agrupamento usado.
+
+##Agrupando pelo Score
+Agora vamos agrupar os filmes segundo o seu score. Antes porém, vamos normalizar a escala de valores do score padronizando-os.
+```{r, warning=FALSE, echo=FALSE}
+x <- mutate(movies_k, imdb_score = scale(imdb_score))
+plot_kmeans_data_1d(x, c("imdb_score"), 4) + 
+  scale_y_continuous(labels=formata_label)+
+  labs(x="", y="Score",  color="Grupo")
+
+```
+
+As medidas de silhoueta demostram que a maioria dos pontos não foram bem rotulados.
+```{r, warning=FALSE, echo=FALSE}
+dists <- movies_k %>%
+    select(title_year) %>%
+    dist()
+x <- mutate(movies_k, imdb_score = scale(imdb_score))
+
+km <- kmeans(select(x, imdb_score), 
+            centers = 4, 
+            nstart = 10)
+plot(silhouette(km$cluster, dists), col= RColorBrewer::brewer.pal(4, "Set2"), border=NA)
+```
+
+Por isso usamos outro algoritmo de agrupamento hierárquico cuja técnica para agrupar é encontrar os pontos que estão mais próximos usando uma medida de distância euclidiana. Encontrando a distância máxima entre os grupos e a mínima entre as distâncias euclidianas para cada grupo, teremos a melhor divisão de grupos possível.
+
+```{r, warning=FALSE, echo=FALSE}
+x <- mutate(movies_k, imdb_score = scale(imdb_score))
+plot_hclust_data(data=x,group_distance_method="euclidian", clust_distance_method = "ward.D", group_column = "imdb_score", ks=1:4) +
+  labs(y="Score", color="Grupo")
+```
+
+A silhouetta para este caso ficou bem melhor, os grupos foram melhor divididos com este algoritmo. A partir daqui usaremos sempre este algoritmo para o score.
+
+```{r, warning=FALSE, echo=FALSE}
+
+x <- mutate(movies_k, imdb_score = scale(imdb_score))
+distancias = x %>% 
+    select(imdb_score) %>%
+    dist(method = "euclidean")
+
+agrupamento_hs = x %>% 
+    column_to_rownames("movie_title") %>%
+    select(imdb_score) %>%
+    dist(method = "euclidean") %>% 
+    hclust(method = "ward.D")
+
+
+plot(silhouette(cutree(agrupamento_hs, k = 4), distancias), col= RColorBrewer::brewer.pal(4, "Set2"), border=NA)
+```
+##Agrupando pelo número de avaliações no facebook
+Pelo número de likes, podemos verificar que pelos valores uma boa divisão de agrupamento seria fazer 4 grupos:
+
+**Muito poular**
+**Popular** 
+**Pouco popular**
+**Desconhecido ou ruim(Pois o filme pode ter recebido poucos likes por ser ruim)**
+```{r, warning=FALSE, echo=FALSE}
+  plot_hclust_data(data=movies_k,
+                   group_distance_method="euclidian", 
+                   clust_distance_method = "ward.D", 
+                   group_column = "movie_facebook_likes", ks=1:4)+
+    scale_y_continuous(labels = formata_label)+
+  labs(x="", y="Likes",  color="Grupo")
+```
+
+E segundo o valor da silhoueta, os pontos foram bem agrupados.
+
+```{r, warning=FALSE, echo=FALSE}
+distancias = movies_k %>% 
+    select(movie_facebook_likes) %>%
+    dist(method = "euclidean")
+
+agrupamento_hs = movies_k %>% 
+    column_to_rownames("movie_title") %>%
+    select(movie_facebook_likes) %>%
+    dist(method = "euclidean") %>% 
+    hclust(method = "ward.D")
+
+
+plot(silhouette(cutree(agrupamento_hs, k = 4), distancias), col= RColorBrewer::brewer.pal(4, "Set2"), border=NA)
+```
+
+##Agrupando pelo número de faces na capa principal do filme
+Por último, agrupamos pelo número de faces. 
+```{r, warning=FALSE, echo=FALSE}
+plot_hclust_data(data=movies_k,
+                   group_distance_method="euclidian", 
+                   clust_distance_method = "ward.D", 
+                   group_column = "facenumber_in_poster", ks=1:4)+
+    scale_y_continuous(labels = formata_label)+
+  labs(x="", y="Nº de faces",  color="Grupo")
+```
+
+```{r, warning=FALSE, echo=FALSE}
+distancias = movies_k %>% 
+    select(facenumber_in_poster) %>%
+    dist(method = "euclidean")
+
+agrupamento_hs = movies_k %>% 
+    column_to_rownames("movie_title") %>%
+    select(facenumber_in_poster) %>%
+    dist(method = "euclidean") %>% 
+    hclust(method = "ward.D")
+
+
+plot(silhouette(cutree(agrupamento_hs, k = 4), distancias), col= RColorBrewer::brewer.pal(4, "Set2"), border=NA)
+```
+
+##Agrupando e relacionando 
+Agora que já analisamos todas as variáveis e verificamos os agrupamentos dos dados em cada uma delas segundo algoritmos de agrupamento computacionais, vamos agora de fato responder a nossa pergunta principal. Analisamos cada uma das variáveis descritas na seção de **Introdução** segundo suas características individualmente, agora vamos vê-las em conjunto e verificar se há relação entre elas para respondermos nossa *Research Question*.
+
+
+```{r, warning=FALSE, echo=FALSE}
+
+dists = movies_k %>% 
+    column_to_rownames("movie_title") %>%
+    select(imdb_score, title_year, facenumber_in_poster, movie_facebook_likes) %>%
+    mutate_all(funs(scale)) %>% 
+    dist(method = "euclidean")
+
+agrupamento_h_md = dists %>% 
+    hclust(method = "ward.D")
+
+atribuicoes = tibble(k = 1:4) %>% 
+    group_by(k) %>% 
+    do(cbind(movies_k, 
+             grupo = as.character(cutree(agrupamento_h_md, .$k)))) 
+
+atribuicoes_long = atribuicoes %>%
+    mutate(imdb_score = scale(imdb_score), 
+           movie_facebook_likes = scale(movie_facebook_likes), 
+           facenumber_in_poster = scale(facenumber_in_poster), 
+           title_year = scale(title_year)) %>% 
+    gather(key = "variavel", value = "valor", -movie_title, -k, -grupo) 
+atribuicoes_long %>% 
+    filter(k == 4) %>%
+    ggplot(aes(x = variavel, 
+               y = valor, 
+               colour = grupo)) + 
+    geom_boxplot() + 
+    geom_point(alpha = .4, position = position_jitter(width = .1)) + theme(axis.text.x=element_text(angle=90,hjust=1,vjust=0.5))+
+    facet_wrap(~ grupo) + 
+    labs(x = "", y = "z-score")
+
+```
+
+O nosso algoritmo dividiu os filmes em 4 grupos. Cada *boxplot*(retângulo) representa uma variável e cada gráfico representa um grupo. Todas as variáveis foram transformadas em uma outra variável chamada de z-score para que possam ser comparadas. O z-score representa o quanto aquele valor está distante da média. Por exemplo, dois z-scores significa dois desvios padrões da média. Fazendo isso, todas elas estarão na mesma grandeza e assim podemos analisá-las conjuntamente. 
+
+Só para conhecimento, a silhueta para este caso não ficou muito legal. Muitos filmes agrupados principalmente do grupo em vermelho parece está mais parecido com os integrantes de outro grupo do que os que estão em seu grupo.
+```{r, warning=FALSE, echo=FALSE}
+plot(silhouette(cutree(agrupamento_h_md, k = 4), dists), col= RColorBrewer::brewer.pal(4, "Set2"), border=NA)
+```
+
+Mesmo assim, prosseguimos em usar esse algoritmo de agrupamento.
+
+##Avaliando os agrupamentos
+Os grupos 1 e 3 possuem dados muito concentrados em torno do valor 0 do gráfico. A mediana dos *boxplots* na figura abaixo representada pela faixa mais escura que divide os retângulos, se encontra geralmente próxima do valor zero. Isso indica que muitos valores da varável z-score estão concentrados próximos desse valor e os valores das variáveis originais estão próximos de cada uma de suas médias. Em outras palavras, quanto mais distante do valor zero o  nosso z-score estiver mas os valores das variáveis vão estar distantes das médias, para cima se o z-score for maior que zero e para baixo se o z-score for menor que zero.
+
+```{r, warning=FALSE, echo=FALSE}
+atribuicoes_long %>% 
+    filter(k == 4) %>%
+    ggplot(aes(x = variavel, 
+               y = valor, 
+               colour = grupo)) + 
+    geom_boxplot() + 
+    geom_point(alpha = .4, position = position_jitter(width = .1)) + theme(axis.text.x=element_text(angle=90,hjust=1,vjust=0.5))+
+    facet_wrap(~ grupo) + 
+    labs(x = "", y = "z-score")
+
+```
+
+Os gráficos abaixo mostram a ligação entre as características dos filmes segundos as avaliações e a coloração significa o grupo no qual o filme foi inserido para cada variável. No grupo verde, os filmes geralmente possuem muitos pontos acima de 0 para a variável *facenumber_in_poster*. Isso que indica uma valor alto para o número de faces. Nesse mesmo grupo verde os mesmos filmes que possuem muitas faces também possuem um alto número de likes no facebook(movie_facebook_like) e baixa avaliação no imdb(imdb_score). E isso faz sentido, pois o imdb_score está mais ligada a qualidade do filme e não sua popularidade. Um filme pode ser muito popular mas ser muito ruim.
+
+```{r, warning=FALSE, echo=FALSE}
+atribuicoes_long %>% filter(k==4) %>%
+    ggplot(aes(x = variavel, y = valor, group = grupo, colour = grupo)) + 
+    geom_point(alpha = .4, position = position_dodge(width = .5)) +
+  theme(axis.text.x=element_text(angle=90,hjust=1,vjust=0.5))+
+    labs(x = "", y = "z-score")
+```
+
+Olhando para a figura abaixo, vamos nomear cada grupo para entendermos melhor as relações encontradas. O grupo 1 poderíamos chamar do grupo dos **filmes em torno da média** pois os valores em z-score de todas as variáveis se encontram próximo de 0, isto é, se a média do número de faces é 8, então a maioria dos filmes desse grupo possui um númerode faces próximo de 8.
+
+Perceba que as linhas do grupo 1 formam um formato continuo de modo que o número de faces parece seguir um padrão em relação ao score e as demais variáveis. Quando o z-score do número de faces se concentra ao redor 0, os valores do z-score em relação as outras variáveis também se concentram em torno de 0. Isso indica que um filme com uma quantidade de faces em torno da média também tem um score, uma quantidade de likes no facebook e um ano em torno de suas respectivas médias. Por isso esse será o nome do primeiro grupo **filmes em torno da média**.
+
+O grupo 2 é bem mais disperso os valores do z-score. Porém há uma coisa interessante aqui, os valores são relacionados pois a maioria dos filmes segue uma mesma característica se o valor de uma variável sobe o da outra também sobe(se distancia positivamente do valor 0) ou se uma desce a outra desce ou ainda se uma sobe a outra desce. Por exemplo, filmes com valores altos do z-score para o número de faces geralmente possuem um score baixo um número de likes alto e são um pouco antigos. Perceba que este grupo demonstra que quanto maior o número de faces na capa de um filme não muito alto será o seu imdb mas o número de likes cresce, ou seja a popularidade do filme cresce. Então este grupo chamaremos de grupo dos **filmes populares com imdb baixo**.
+
+O terceiro grupo é muito semelhante ao primeiro, talvez se juntássemos os dois não teria muita diferença. O que mais chama a atenção neste grupo é o quanto ele possui filmes cujas variáveis se aproximam de suas médias e o valor baixo do imdb. Se percebermos também, os filmes não possuem muitas faces, não são muito populares pelo número de likes no facebook e são filmes antigos pois temos filmes desde 1916 até 2016. Então fazendo a média disso temos um filme antigo. Este grupo será chamado de grupo dos **filmes não populares com poucas faces e score baixo**
+
+O quarto grupo são dos filmes antigos com alguns deles possuindo faces na capa então o nome seria o grupo dos **filmes antigos pouco populares e com poucas faces**
+
+```{r, warning=FALSE, echo=FALSE}
+atribuicoes_long %>% 
+    filter(k == 4) %>%
+    ggplot(aes(x = variavel, y = valor, group = movie_title, colour = grupo)) + 
+    geom_point(alpha = .3, size = .5) + 
+    geom_line(alpha = .7) + 
+    facet_wrap(~ paste("Grupo ", grupo)) + 
+  theme(axis.text.x=element_text(angle=90,hjust=1,vjust=0.5))+
+    labs(x = "", y = "z-score")
+```
+
+Resumindo, temos quatro grupos 
+Grupo 1 - filmes em torno da média
+Grupo 2 - filmes não populares com poucas faces e score baixo
+Grupo 3 - filmes populares com score baixo
+Grupo 4 - filmes antigos pouco populares e com poucas faces
+
+##Considerações finais
+Perceba que no último gráfico da seção anterior, os grupos 2 e 3 respondem a nossa pergunta. O grupo 2 indica que um número de faces baixo(nem muito, nem pouco) influencia no número de likes do filme, no score e consequentemente na popularidade. Já o grupo 3 faz o contrario, nenhuma face gera poucos likes e score baixo. Com isso podemos concluir que estatisticamente é possível perceber que quanto maior o numero de faces na capa do filme mais popular ele ficará. Também filmes antigos tendem a ter poucas faces e pouca popularidade. Uma coisa que poderia ter sido melhor é a escolha do algoritmo de correlação que usamos neste último gráfico. Aparentemente não foi o mais adequado, pois os agrupamentos não ficaram muito bons, um exemplo disso foi a escolha dos filmes para os grupos 1 e 3 que pelos gráficos são muito semelhantes, parecendo mais serem um grupo só do que grupos separados.Se um outro tivesse sido usado podería ter trazido melhores resultados. 

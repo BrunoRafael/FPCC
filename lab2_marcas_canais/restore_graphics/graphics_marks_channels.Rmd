@@ -128,13 +128,13 @@ geom_point(alpha = .7)+
 geom_count(aes(size = Count))+
 geom_line()+
 scale_color_discrete(labels=c("centro" = "Center","direita" = "Right-wing","esquerda"="Left-wing"))+
-theme(text = element_text(size=7),
+theme(text = element_text(size=12),
       axis.title.x = element_blank())+
 labs(y = "Spending R$ (in milions)", colour="Ideology", size = "No. of \ndeputies")+
 scale_x_continuous(breaks=unique(gastos_titulares$numAno))
 
 print(g)
-ggsave("restored_graph.pdf", width = 4.5, height = 3, bg = "transparent")
+ggsave("restored_graph.pdf", width = 5, height = 3, bg = "transparent")
   
 ```
 
@@ -150,7 +150,7 @@ facet_grid(.~numAno)+
 theme(axis.text.x=element_blank(),
         axis.ticks.x=element_blank(),
       axis.title.x=element_blank(),
-      text = element_text(size=7))+
+      text = element_text(size=10))+
 labs(y = "Spending R$ (in milions)", fill="Ideology")
 
 print(p)
