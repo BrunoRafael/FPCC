@@ -328,7 +328,7 @@ dists = movies_k %>%
 agrupamento_h_md = dists %>% 
     hclust(method = "ward.D")
 
-atribuicoes = tibble(k = 1:4) %>% 
+atribuicoes = tibble(k = 1:4) %>%
     group_by(k) %>% 
     do(cbind(movies_k, 
              grupo = as.character(cutree(agrupamento_h_md, .$k)))) 
