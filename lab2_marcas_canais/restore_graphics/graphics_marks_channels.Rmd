@@ -176,9 +176,12 @@ mutate(is_default_value=TRUE) %>%
 select(-Count, -valor)
 gastos_ideais_por_estado <- plyr::rename(gastos_ideais_por_estado, c("estado" = "sgUF"))
 
-gastos_reais_por_estado <- gastos_reais_por_estado %>% rbind(gastos_ideais_por_estado)
 View(gastos_reais_por_estado)
-gastos_reais_por_estado %>%
+View(gastos_ideais_por_estado)
+
+merge <- gastos_reais_por_estado %>% rbind(gastos_ideais_por_estado) %>%
+
+merge %>%
   ggplot(aes(x = sgUF, 
              y = total_real_gasto)) + 
   geom_point(alpha = .7)+

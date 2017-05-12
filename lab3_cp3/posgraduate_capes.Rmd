@@ -1,0 +1,165 @@
+---
+title: "Análise dos cursos de pós-graducação da Capes no Brasil"
+author: "Bruno Vasconcelos"
+date: "12 de maio de 2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Análise dos dados utilizados
+
+Para nossa pesquisa, os valores que não foram declarados para número de periódicos com ou sem aluno de qualquer qualificação, foram considerados como zero. Ao calcular os valores dos índices, através das seguintes equações :
+
+indice de publicações com alunos = 0.85 x per_comaluno_A1 + 0.75 x per_comaluno_A2 + 0.65 x per_comaluno_B2; (Equação I)
+
+indice de publicações sem alunos = 0.85 x periodicos_A1 + 0.75 x periodicos_A2 + 0.65 x periodicos_B2; (Equação II)
+
+Os valores não declarados pode ser encarado como zero, pois não influenciam no resultado final mesmo que sejam descartados. Estes índices são calculados em relação ao número de publicações em periódicos cuja qualificação é considerada alta(A1, A2 e B1).
+
+```{r warning=FALSE, capes_analysis}
+library(tidyverse)
+theme_set(theme_bw())
+```
+
+##Introdução
+
+A CAPES(Comissão de Aperfeiçoamento de Pessoal do Nível Superior) é o órgão do Ministério da Educação responsável pelo reconhecimento e a avaliação de cursos de pós-graduação stricto-sensu (mestrado profissional, mestrado acadêmico e doutorado) em âmbito nacional.(Fonte: Wikipédia)
+
+A CAPES nos últimos anos, disponibilizou online os dados das avaliações dos cursos que podem ser baixados por membros. Antes só era possível enviar relatórios para avaliação dos cursos. Hoje, é possível baixar e avaliar cada curso de pós graduação em cada universidade de todas as áreas do Brasil a partir dos dados.
+
+As avaliações são feitas por vários critérios, número de artigos publicados, número de teses de doutorado(se a instituição tiver programa de doutorado, pois as instituições permitidas são aquelas que possuem avaliação igual ou superior a 4) e número de artigos publicados em periódicos de diversas classificações.
+
+Esta pesquisa usa os dados extraídos da Plataforma [Sucupira](https://sucupira.capes.gov.br/sucupira/public/index.xhtml), e incluem quantificações da produção de artigos, dissertações e teses nos últimos 4 anos para os diferentes cursos de pós-graduação. Os dados usados nesta pesquisa podem ser encontrados [aqui](https://drive.google.com/file/d/0B1XaBFxg5n5OdEJMYXd0N3Nub0k/view?usp=sharing).
+
+
+##Avaliando os dados
+
+Uma visão geral dos dados usados pode ser vista nesta seção.
+
+
+```{r pressure, warning=FALSE, include=FALSE, echo=FALSE}
+labels <- list(
+  'Artigos em conf'="Artigos em conferência",
+  'per_comaluno_A1'="Periódicos A1 com aluno",
+  'per_comaluno_A2'="Periódicos A2 com aluno",
+  'per_comaluno_B1'="Periódicos B1 com aluno",
+  'periodicos_A1'="Periódicos A1 sem aluno",
+  'periodicos_A2'="Periódicos A2 sem aluno",
+  'periodicos_B1'="Periódicos B1 sem aluno",
+  'per_comaluno_NA' = "Periódicos sem qualificação com aluno"
+)
+
+getLabel = function(key){
+  return(labels[key])
+}
+
+dados_capes <- read_csv("dados//capes-cacc.csv")
+dados_capes_filter <- dados_capes %>% 
+  select(
+    `Programa`, 
+    `Sigla`, 
+    `Nível`,
+    `Artigos em conf`, 
+    `per_comaluno_A1`, 
+    `per_comaluno_A2`, 
+    `per_comaluno_B1`, 
+    `periodicos_A1`, 
+    `periodicos_A2`, 
+    `periodicos_B1`, 
+    `per_comaluno_NA`) %>% 
+  mutate(
+    per_comaluno_A1 = ifelse(is.na(per_comaluno_A1), 0, per_comaluno_A1),
+    per_comaluno_A2 = ifelse(is.na(per_comaluno_A2), 0, per_comaluno_A2),
+    per_comaluno_B1 = ifelse(is.na(per_comaluno_B1), 0, per_comaluno_B1),
+    periodicos_A1 = ifelse(is.na(periodicos_A1), 0, periodicos_A1),
+    periodicos_A2 = ifelse(is.na(periodicos_A2), 0, periodicos_A2),
+    periodicos_B1 = ifelse(is.na(periodicos_B1), 0, periodicos_B1),
+    per_comaluno_NA = ifelse(is.na(per_comaluno_NA), 0, per_comaluno_NA)
+    )
+```
+As outras variáveis não apresentaram muitos problemas, portanto não houve nenhum tratamento.
+
+
+<!-- Mostrar distribuição dos periódicos -->
+```{r warning=FALSE, echo=TRUE}
+
+x <- dados_capes_filter
+
+colnames(x) <- c("Programa", "Sigla", "Nivel", "Artigos em conf", "A1 com aluno", "A2 com aluno", "B1 com aluno", "A1 sem aluno", "A2 sem aluno", "B1 sem aluno", "Desconhec.")
+
+dados_capes_change_column_names <- x %>%
+    gather(key = "variavel", value = "valor", 
+           `A1 com aluno`, `A2 com aluno`, `B1 com aluno`, `A1 sem aluno`, `A2 sem aluno`, `B1 sem aluno`, `Desconhec.`) 
+
+dados_capes_change_column_names %>% 
+    ggplot(aes(y = valor, x =variavel, group=variavel)) +
+    geom_boxplot(alpha = 0.4)+
+    facet_grid(.~variavel, scales = "free_x")+
+    labs(x="", y = "Valor")
+
+```
+  A quantidade de publicações de cada curso de pós-graduação dos últimos 4 anos, em todas as qualificações possíveis, não é muito alta. Perceba que 75% de todos os cursos publicaram menos de 50 vezes, artigos em periódicos de todos os tipos de qualificação. A maior concentração de valores em torno de um valor representativo se encontra em qualificações como **A2 com aluno** e **Desconhecido**(Perodico sem qualificação) pois se apresentam 75% dos seus valores pouco espalhados(altura do retângulo nos gráficos). De forma geral, podemos dizer que os cursos não publicam muitos artigos anualmente, pois a maioria deles não publicaram mais de 50 artigos em nenhum periódico de qualquer qualificação ao longo de 4 anos.
+
+
+  Olhando para os gráficos percebemos também que há uma instituição que publicou mais de 150 vezes em periódicos A1 sem aluno. Isso é um pouco surpreendente pois a maioria dos artigos é composta por ao menos um aluno e ainda por cima, a instituição publicou uma quantidade exarcebada de artigos em periódicos com qualificação mais alta possível que é a A1. O curso de pós-graduação é o de Ciência da computação e matemática computacional da USP do campus da cidade de São Carlos.
+
+##Calculando indíce de publicações em qualificações(IPQ) 
+Para avaliarmos nosso conjunto de dados e respondermos as perguntas de pesquisa que queremos saber, teremos que gerar uma nova coluna em nossos dados a partir dos valores de qualificações. Vamos gerar duas novas colunas chamadas de IPQA(Índice de publicações com aluno em qualificações) e IPQS(Índice de publicações sem aluno em qualificações) dados respectivamente pela Equação I e Equação II. A partir de agora, nossos dados terão essas duas novas colunas e todas as outras relacionadas a qualificações serão removidas(periodicos_A1, periodicos_A2, etc).Somente a coluna per_comaluno_NA continuará.
+
+```{r, warning=FALSE, echo=TRUE}
+
+dados_capes_modified <- dados_capes_filter %>% mutate(IPQS=0.85*periodicos_A1 + 0.75*periodicos_A2+ 0.65*periodicos_B1, IPQA=0.85*per_comaluno_A1 + 0.75 * per_comaluno_A2 + 0.65 * per_comaluno_B1) %>%select(-periodicos_A1, -periodicos_A2, -periodicos_B1,-per_comaluno_A1, -per_comaluno_A2, -per_comaluno_B1 )
+
+```
+
+Vamos avaliar como ficou as distribuições das novas colunas IPQS e IPQA
+
+```{r warning=FALSE, echo=TRUE}
+
+x <- dados_capes_modified %>%
+    gather(key = "variavel", value = "valor", `IPQA`, `IPQS`) 
+
+x %>% ggplot(aes(y = valor, x =variavel, group=variavel)) +
+    geom_boxplot(alpha = 0.4)+
+    facet_grid(.~variavel, scales = "free_x")+
+    labs(x="", y = "Valor")
+
+```
+
+Observando as distribuições de IPQA e IPQS, vemos outra coisa interessante no nos valores de IPQA.Os cursos em geral se concentram mais em torno de um valor comum que é o zero do que o IPQS(a variação é menor). Isso indica que os cursos geralmente publicam pouco em periódicos de alta qualificação com alunos. Parece que há bem mais publicações sem alunos(IPQS).A variação entre IPQA e IPQS pode ser vista através da altura dos retângulos dos gráficos.
+
+```{r, echo=TRUE}
+
+dists = movies_k %>% 
+    column_to_rownames("movie_title") %>%
+    select(imdb_score, title_year, facenumber_in_poster, movie_facebook_likes) %>%
+    mutate_all(funs(scale)) %>% 
+    dist(method = "euclidean")
+
+agrupamento_h_md = dists %>% 
+    hclust(method = "ward.D")
+
+atribuicoes = tibble(k = 1:4) %>% 
+    group_by(k) %>% 
+    do(cbind(movies_k, 
+             grupo = as.character(cutree(agrupamento_h_md, .$k)))) 
+
+atribuicoes_long = atribuicoes %>%
+    mutate(imdb_score = scale(imdb_score), 
+           movie_facebook_likes = scale(movie_facebook_likes), 
+           facenumber_in_poster = scale(facenumber_in_poster), 
+           title_year = scale(title_year)) %>% 
+    gather(key = "variavel", value = "valor", -movie_title, -k, -grupo)
+
+atribuicoes_long %>% 
+    filter(k == 4) %>%
+    ggplot(aes(x = variavel, y = valor, group = movie_title, colour = grupo)) + 
+    geom_point(alpha = .3, size = .5) + 
+    geom_line(alpha = .7) + 
+    facet_wrap(~ paste("Grupo ", grupo)) + 
+  theme(axis.text.x=element_text(angle=90,hjust=1,vjust=0.5))+
+    labs(x = "", y = "z-score")
+```
