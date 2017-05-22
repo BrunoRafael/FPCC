@@ -19,9 +19,22 @@ indice de publicações sem alunos = 0.85 x periodicos_A1 + 0.75 x periodicos_A2
 
 Os valores não declarados pode ser encarado como zero, pois não influenciam no resultado final mesmo que sejam descartados. Estes índices são calculados em relação ao número de publicações em periódicos cuja qualificação é considerada alta(A1, A2 e B1).
 
+Esta pesquisa busca responder as seguintes perguntas
+
+Universidades com ALTO INDICE SEM ALUNOS possuem ALTO NÍVEL?
+Universidades com BAIXO INDICE SEM ALUNOS possuem per_comaluno_NA ALTO?
+Universidades com ALTO NUMERO DE PUBLICAÇÕES EM CONFERÊNCIAS(artigos_em_conf) possuem per_comaluno_NA ALTO?
+
 ```{r warning=FALSE, capes_analysis}
 library(tidyverse)
+library(broom)
 theme_set(theme_bw())
+
+formata_label = function(l){
+  # existem funções para formatar com , sendo milhar e . sendo decimal (scales::comma)
+  # mas em pt_br é o contrário. essa função serve para isso
+  format(l, big.mark = ".", scientific = FALSE, trim = TRUE, decimal.mark = ",")
+} 
 ```
 
 ##Introdução
@@ -131,23 +144,86 @@ x %>% ggplot(aes(y = valor, x =variavel, group=variavel)) +
 
 Observando as distribuições de IPQA e IPQS, vemos outra coisa interessante no nos valores de IPQA.Os cursos em geral se concentram mais em torno de um valor comum que é o zero do que o IPQS(a variação é menor). Isso indica que os cursos geralmente publicam pouco em periódicos de alta qualificação com alunos. Parece que há bem mais publicações sem alunos(IPQS).A variação entre IPQA e IPQS pode ser vista através da altura dos retângulos dos gráficos.
 
+##Avaliando a relação entre os critérios de avaliação
+Para responder as nossas perguntas, precisamos agrupar nossos dados e avaliar as relações entre os grupos que serão formados para observarmos tendências e padrões. Para agruparmos, precisamos inicialmente saber quantos grupos deverão ser formados para representar bem as discrepâncias entre os dados. Vejamos o gráfico abaixo
+
+```{r, echo=TRUE}
+  set.seed(123)
+  data_kmeans <- tibble(k = 1:15) %>% 
+      group_by(k) %>% 
+      do(
+          kmeans(select(dados_capes_modified, `Nível`, `Artigos em conf`, `per_comaluno_NA`, `IPQS`, `IPQA`), 
+                 centers = .$k, 
+                 nstart = 20) %>% glance()
+      )
+  
+  data_kmeans %>% 
+      ggplot(aes(x = k, y = tot.withinss)) + 
+      geom_line() + 
+      geom_point() +
+      scale_y_continuous(labels = formata_label)+
+      labs(x="", y = "Grau de dissimilaridade")
+      
+```
+
+Este gráfico indica o quanto o agrupamento é relevante para um determinado valor k. Perceba que quando k = 1 o nível de dissimilaridade entre os grupos formados é alto. Quanto mais k aumenta, mais parece ser irrelevante ficar fazendo agrupamentos pois os grupos formados parecem ficar cada vez mais similares. É como se não tivéssemos mais diferenças tão grandes entre os elementos e o algoritmo não consegue encontrar mais diferenças tão grandes entre os grupos formados. Isso pode ser visto através da forma decrescente que o gráfico assume ao aumentar o valor de k.
+
 ```{r, echo=TRUE}
 
-dists = movies_k %>% 
+dados_transformado = dados_capes_modified %>%
+    mutate_at(vars(age:votes), funs(as.numeric(scale(.))))
+
+dados_capes_km = dados_transformado %>%
+    select(-Sigla, -Programa) %>% 
+    kmeans(centers = 6, nstart = 20)
+
+dados_transformado_agrupado = dados_capes_km %>% 
+    augment(dados_capes_modified)
+
+dados_capes_km %>% 
+    augment(dados_capes_modified) %>%
+    gather(key = "variável", value = "valor", -Programa, -.cluster) %>% 
+    ggplot(aes(x = `variável`, y = valor, group = Programa, colour = .cluster)) + 
+    geom_line(alpha = .2) + 
+    facet_wrap(~ .cluster) 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+dists <- movies_k %>% 
     column_to_rownames("movie_title") %>%
     select(imdb_score, title_year, facenumber_in_poster, movie_facebook_likes) %>%
     mutate_all(funs(scale)) %>% 
     dist(method = "euclidean")
 
-agrupamento_h_md = dists %>% 
+agrupamento_h_md <- dists %>% 
     hclust(method = "ward.D")
 
-atribuicoes = tibble(k = 1:4) %>% 
+atribuicoes <- tibble(k = 1:4) %>% 
     group_by(k) %>% 
     do(cbind(movies_k, 
              grupo = as.character(cutree(agrupamento_h_md, .$k)))) 
 
-atribuicoes_long = atribuicoes %>%
+atribuicoes_long <- atribuicoes %>%
     mutate(imdb_score = scale(imdb_score), 
            movie_facebook_likes = scale(movie_facebook_likes), 
            facenumber_in_poster = scale(facenumber_in_poster), 

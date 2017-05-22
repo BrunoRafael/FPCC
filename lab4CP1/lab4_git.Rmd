@@ -1,0 +1,138 @@
+---
+title: "Análise das alterações feitas pelos usuários no github"
+author: "Bruno Rafael"
+date: "20 de maio de 2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_knit$set(eval.after = 'fig.cap')
+library(tidyverse)
+library(broom)
+require(GGally, quietly = TRUE)
+theme_set(theme_bw())
+```
+
+Para esta pesquisa, foram avaliados os dados do github conforme o número de alterações diárias feitas pelos usuários. Todo o trablaho foi feito em torno de uma amostra dos dados que correspondem aos últimos dois anos. Os dados usados estão neste [link](https://raw.githubusercontent.com/nazareno/fpcc2/master/datasets/github-users-committing-filetypes.csv) e todo o projeto de desenvolvimento se encontra no github e podem ser encontrados [aqui](https://github.com/BrunoRafael/FPCC)
+
+Os dados contém 5 parâmetros para análise e são eles:
+
+File_extension: A extensão do arquivo modificado;
+month_day : Dia do mês em que a alteração foi feita;
+the_month : Mês em que a alteração foi feita;
+the_year : Ano em que a alteração foi feita;
+users : Número de usuários que alteraram determinado tipo de arquivo em uma determinada data do ano
+
+A amostra foi coletada nos últimos dois anos, que correspondem a 2016 e parte de 2017.
+
+```{r pressure, echo=FALSE}
+
+formata_label = function(l){
+  # existem funções para formatar com , sendo milhar e . sendo decimal (scales::comma)
+  # mas em pt_br é o contrário. essa função serve para isso
+  format(l, big.mark = ".", scientific = FALSE, trim = TRUE, decimal.mark = ",")
+} 
+git_data <- read_csv(url("https://raw.githubusercontent.com/nazareno/fpcc2/master/datasets/github-users-committing-filetypes.csv"))
+
+```
+## Introdução
+Esta pesquisa busca analisar arquivos com extensão .js e .java que são que correspondem a duas linguagens que estão bastante em alta no mercado de software, que são respectivamente as linguagens javascript usada para aplicações cliente que executam nos browsers e java muito usada em servidores.Além de java e javascript, há também dados de arquivos que não correspondem a nenhuma linguagem de programação como png e pdf por exemplo.
+
+Conforme o gráfico da figura 1, os arquivos que mais possuem alterações no git, são arquivos com extensão md. Estes arquivos são extensões do RMarkdown que é um pacote usado com a linguagem R para formatação de documentos para visualização de resultados de pesquisas usando o R. Os arquivos .js são o segundo mais modificado.
+
+```{r, fig.align='center', fig.cap="Figura 1 - Frequência de acesso por arquivo"}
+git_data %>% group_by(file_extension) %>% 
+summarise(sum = sum(users)) %>%
+ggplot(aes(x = reorder(as.factor(file_extension), sum), y = sum)) + 
+geom_histogram(stat = "identity", alpha=0.8) +
+labs(x="Extensão do arquivo", y = "Nº de alterações durante os dois anos avaliados")+
+scale_y_continuous(labels = formata_label)+
+coord_flip()
+```
+
+Para isso, é necessário selecionar apenas as informações referentes a estas linguagens. Portanto, os dados selecionados nesta pesquisa contém apenas informações das linguagens java e javascript.
+
+Esta pesquisa busca responder as seguintes perguntas:
+
+Há uma diferença significativa na popularidade das liguagens durante a semana e durante o fim de semana? 
+
+Existe uma diferença significativa na variação da popularidade das duas quando você compara o quanto a popularidade de cada uma varia durante os dias da semana?
+
+##Avaliando os dados utilizados
+
+Não faz sentido visualizarmos dos outros parâmetros pois são valores bem definidos, por exemplo, o ano será somente 2016 e 2017, os dias da semana vão de 1 a 7 conforme o dia que ele representa na semana e o Mês de 1 a 31. Por isso só iremos visualizar os dados referentes ao número de acessos que podem variar conter problemas mais graves. A dispersão dos dados é representada pela
+
+```{r, fig.align='center', fig.cap="Figura 2 - Distribuições do número de acesso"}
+
+git_data %>% 
+    ggplot(aes(x ="Extensão", y=users)) +
+    geom_boxplot(alpha = 0.4)+
+    labs(x="", y = "Total de acessos")
+```
+
+A Figura 2 expressa a forma da distribuição dos dados referentes ao número de acessos de cada arquivo em 1 dia. Perceba que o retângulo na Figura 2 está um pouco acima de 2500, o que indica que 75% do número diário de acessos nesta amostra estão abaixo de 3000 acessos.
+
+Anualmente, temos que as distribuições são da seguinte forma
+
+```{r, fig.align='center', fig.cap="Figura 3 - Distribuições do número de acesso por ano"}
+git_data %>%
+  group_by(file_extension, the_year) %>% 
+  summarise(sum = sum(users)) %>%
+  arrange(desc(sum)) %>%
+  ggplot(aes(x = "", y = sum)) + 
+  geom_boxplot(alpha = 0.4)+
+  facet_grid(.~the_year) + 
+  scale_y_continuous(labels = formata_label)+
+  labs(x = "Tipo de arquivo", y = "Nº de modificações no ano")
+
+```
+
+Note que na figura 3, o ano de 2017 os dados estão bem menos distribuídos do que em 2016. Perceba que isso ocorre devido a quantidade de dados coletado em cada ano que é diferente. 2017 possui bem menos dados so que 2016 pois estamos chegando ainda na metade do ano.
+
+O valor máximo ultrapassa 10000 acessos diários e corresponde a extensão .md do RMarkdown. Não há nenhum arquivo que não teve 0 acessos para esta amostra.
+
+Podemos ver também as distribuições mensais dos acessos. Alguns meses são mais distribuídos que outros, a primeira metade de 2016 os dados são um pouco mais dispersos que a segunda metade e também o número de acessos diários um pouco mais alto, acima de 2500 acessos. Perceba que o mês 5 de 2017 é o menos distribuído pois é o mês que contém menos dados por ser o mês corrente quando esta pesquisa foi realizada.
+```{r}
+git_data %>%
+  group_by(the_year, the_month, users) %>% 
+  arrange(desc(users)) %>%
+  ggplot(aes(x = the_month, y = users, group=the_month)) + 
+  geom_boxplot(alpha = 0.4)+
+  facet_grid(.~the_year) + 
+  scale_x_continuous(breaks=unique(git_data$the_month))+
+  labs(x = "Nº do mês", y = "Nº de usuários a cada mês")
+```
+Como não houveram problemas nos dados, não foram feitos nenhum tratamento especial para corrigir os problemas.
+
+Para responder as perguntas, precisamos agrupar os dados em dois grupos:
+
+Grupo 1 : Acessos durante a semana
+Grupo 2 : Acessos no fim de semana
+
+A figura 4 mostra a distribuição desses 2 grupos
+
+```{r warning=FALSE, echo=TRUE}
+dados_capes_change_column_names <- git_filter_data %>%
+    gather(key = "variavel", value = "valor", users) 
+View(dados_capes_change_column_names)
+
+dados_capes_change_column_names %>% 
+    ggplot(aes(y = valor, x =variavel, group=variavel)) +
+    geom_boxplot(alpha = 0.4)+
+    facet_grid(.~variavel, scales = "free_x")+
+    labs(x="", y = "Valor")
+
+```
+
+
+```{r}
+git_data %>%
+  group_by(the_year, the_month, users) %>% 
+  arrange(desc(users)) %>%
+  ggplot(aes(x = the_month, y = users, group=the_month)) + 
+  geom_boxplot(alpha = 0.4)+
+  facet_grid(.~the_year) + 
+  scale_x_continuous(breaks=unique(git_data$the_month))+
+  labs(x = "Nº do mês", y = "Nº de usuários a cada mês")
+```
