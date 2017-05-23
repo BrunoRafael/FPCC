@@ -166,12 +166,55 @@ git_data_filter %>%
 
 Para responder as perguntas, precisamos agrupar os dados em dois grupos para cada uma das linguagens avaliadas:
 
-Acessos durante a semana
-Acessos no fim de semana
+ - Acessos durante a semana
+ - Acessos no fim de semana
 
-Em javascript
+Para inferir alguma coisa sobre as modificações do github, é necessário fazer análises estatísticas na amostra usando técnicas adequadas para isso. Uma técnica bem interessante é o bootstrap que é um método de reamostragem proposto por Bradley Efron em 1979 utilizado para aproximar a distribuição amostral da população usando a distribuição de amostras geradas a partir de uma amostra retirada da população(AM). A técnica consiste em repetir o processo de amostragem um grande número de vezes e calcular a distribuição do parâmetro observado na amostra e ao final inferir os resultados para toda a população. A grande sacada do bootstrap é que as amostras construídas são de mesmo tamanho de AM pegando elemento por elemento com repetição. Se não houvesse repetição toda amostra para o bootstrap seria a própria AM.
+
+Nesta pesquisa, os parâmetros escolhidos que analizsaremos são a mediana e o desvio padrão.
+
 
 ```{r}
+set.seed(123)
+
+```
+
+Se compararmos os intervalos de confiança de cada grupo poderemos ver com uma confiança de 95% onde a mediana dos dois grupos é mais provável de está quando uma amostra for selecionada
+```{r}
+library(resample)
+b1 = git_data_weekend %>% 
+  filter(file_extension == "js") %>%
+  bootstrap(median(users))
+
+median.weekend = b1 %>% 
+  CI.percentile(probs = c(.025, .975))
+
+b2 = git_data_days_of_the_week %>% 
+  filter(file_extension == "js") %>%
+  bootstrap(median(users))
+
+median.other_days = b2 %>% 
+  CI.percentile(probs = c(.025, .975))
+
+df.median = data.frame(rbind(median.weekend, 
+                             median.other_days))
+df.median$measurement = c("Fins de semana", "Dias de semana")
+
+df.median %>% 
+  ggplot(aes(x = measurement, ymin = X2.5., ymax = X97.5.)) + 
+  geom_errorbar(width = .2)
+
+
+
+
+
+
+
+
+
+
+
+
 
 git_js_other_days <- git_data_filter %>% filter(file_extension == "js") %>%
   filter(!week_day %in% c("sábado", "domingo"))
