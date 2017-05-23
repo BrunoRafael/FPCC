@@ -26,6 +26,8 @@ users : Número de usuários que alteraram determinado tipo de arquivo em uma de
 
 A amostra foi coletada nos últimos dois anos, que correspondem a 2016 e parte de 2017.
 
+Outra coisa importante é que vale lembrar que os dias de fim de semana são apenas sábado e domingo.
+
 ```{r pressure, echo=FALSE}
 
 formata_label = function(l){
@@ -35,6 +37,15 @@ formata_label = function(l){
 } 
 git_data <- read_csv(url("https://raw.githubusercontent.com/nazareno/fpcc2/master/datasets/github-users-committing-filetypes.csv"))
 
+git_data_filter <- git_data %>% filter(file_extension %in% c("js", "java"))
+
+git_data_filter <- git_data_filter %>% mutate(date = paste(month_day, the_month, the_year, sep="-"))
+
+git_data_filter$week_day <- weekdays(as.Date(git_data_filter$date))
+
+git_data_weekend <- git_data_filter %>% filter(week_day %in% c("sábado", "domingo"))
+
+git_data_days_of_the_week <- git_data_filter %>% filter(!week_day %in% c("sábado", "domingo"))
 ```
 ## Introdução
 Esta pesquisa busca analisar arquivos com extensão .js e .java que são que correspondem a duas linguagens que estão bastante em alta no mercado de software, que são respectivamente as linguagens javascript usada para aplicações cliente que executam nos browsers e java muito usada em servidores.Além de java e javascript, há também dados de arquivos que não correspondem a nenhuma linguagem de programação como png e pdf por exemplo.
@@ -71,7 +82,7 @@ git_data %>%
     labs(x="", y = "Total de acessos")
 ```
 
-A Figura 2 expressa a forma da distribuição dos dados referentes ao número de acessos de cada arquivo em 1 dia. Perceba que o retângulo na Figura 2 está um pouco acima de 2500, o que indica que 75% do número diário de acessos nesta amostra estão abaixo de 3000 acessos.
+A Figura 2 expressa a forma da distribuição dos dados referentes ao número de acessos de cada arquivo em 1 dia. Perceba que o retângulo na Figura 2 está um pouco acima de 2500, o que indica que 75% do número diário de acessos nesta amostra estão abaixo de 3000 acessos. Em compensação, alguns dias ultrapassaram os dez mil acessos diários em arquivos de extensão .md do RMarkdown. Não há nenhum arquivo que não teve 0 acessos para esta amostra.
 
 Anualmente, temos que as distribuições são da seguinte forma
 
@@ -88,12 +99,11 @@ git_data %>%
 
 ```
 
-Note que na figura 3, o ano de 2017 os dados estão bem menos distribuídos do que em 2016. Perceba que isso ocorre devido a quantidade de dados coletado em cada ano que é diferente. 2017 possui bem menos dados so que 2016 pois estamos chegando ainda na metade do ano.
+Note que na figura 3, no ano de 2017 os dados estão bem menos distribuídos do que em 2016. Perceba que isso ocorre devido a quantidade de dados coletados em 2017 é bem menor que 2016.
 
-O valor máximo ultrapassa 10000 acessos diários e corresponde a extensão .md do RMarkdown. Não há nenhum arquivo que não teve 0 acessos para esta amostra.
+Podemos ver também as distribuições mensais dos acessos. Alguns meses o número de acesso são mais distribuídos que em outros, a primeira metade de 2016 os dados são um pouco mais dispersos que a segunda metade e também o número de acessos diários um pouco mais alto, acima de 2500 acessos. Perceba que o mês 5 de 2017 é o menos distribuído pois é o mês que contém menos dados por ser o mês corrente quando esta pesquisa foi realizada.A conclusão é que não há muita diferença no número de acesso comparando cada mês.
 
-Podemos ver também as distribuições mensais dos acessos. Alguns meses são mais distribuídos que outros, a primeira metade de 2016 os dados são um pouco mais dispersos que a segunda metade e também o número de acessos diários um pouco mais alto, acima de 2500 acessos. Perceba que o mês 5 de 2017 é o menos distribuído pois é o mês que contém menos dados por ser o mês corrente quando esta pesquisa foi realizada.
-```{r}
+```{r, fig.align='center', fig.cap="Figura 4 - Distribuições do número de acesso mensal nos anos de 2016 e 2017"}
 git_data %>%
   group_by(the_year, the_month, users) %>% 
   arrange(desc(users)) %>%
@@ -101,38 +111,102 @@ git_data %>%
   geom_boxplot(alpha = 0.4)+
   facet_grid(.~the_year) + 
   scale_x_continuous(breaks=unique(git_data$the_month))+
-  labs(x = "Nº do mês", y = "Nº de usuários a cada mês")
+  labs(x = "Nº do mês", y = "Nº de modificações por mês")
 ```
 Como não houveram problemas nos dados, não foram feitos nenhum tratamento especial para corrigir os problemas.
 
-Para responder as perguntas, precisamos agrupar os dados em dois grupos:
+Vejamos as distribuições por dias da semana para ambas as linguagens
 
-Grupo 1 : Acessos durante a semana
-Grupo 2 : Acessos no fim de semana
 
-A figura 4 mostra a distribuição desses 2 grupos
+```{r, fig.align='center', fig.cap="Figura 5 - Distribuição dos dados de acesso em dias úteis e no fim de semana para a linguagem java"}
+x <- git_data_filter %>% 
+  filter(file_extension == "java") %>%
+  group_by(date, week_day) %>%
+  summarise(sum = sum(users))
 
-```{r warning=FALSE, echo=TRUE}
-dados_capes_change_column_names <- git_filter_data %>%
-    gather(key = "variavel", value = "valor", users) 
-View(dados_capes_change_column_names)
+x %>% 
+  ggplot(aes(x="", y=sum)) + 
+  geom_boxplot(alpha = 0.4)+
+  facet_grid(.~week_day)+
+  labs(x = "Arquivos com extensão java", y = "Nº de modificações por dia")
+  
+```
 
-dados_capes_change_column_names %>% 
-    ggplot(aes(y = valor, x =variavel, group=variavel)) +
-    geom_boxplot(alpha = 0.4)+
-    facet_grid(.~variavel, scales = "free_x")+
-    labs(x="", y = "Valor")
+```{r, fig.align='center', fig.cap="Figura 6 - Distribuição dos dados de acesso em dias úteis e no fim de semana para a linguagem javascript"}
+x <- git_data_filter %>% 
+  filter(file_extension == "js") %>%
+  group_by(date, week_day) %>%
+  summarise(sum = sum(users))
 
+x %>% 
+  ggplot(aes(x="", y=sum)) + 
+  geom_boxplot(alpha = 0.4)+
+  facet_grid(.~week_day)+
+  labs(x = "Arquivos com extensão js ", y = "Nº de modificações por dia")
+  
+```
+
+Olhando para os gráficos, percebemos que o número de acessos no fim de semana é ligeiramente mais variado do que em dias de semana. A mediana (linha escura que divide o retângulo do gráfico) parece ser menor para os fins de semana. Porém, de forma geral não são variações muito significativas e o número de outliers é muito baixo, o que indica que valores discrepantes não estão fazendo a diferença no aumento ou diminuição dos números de acessos totais em algum dia da semana.
+
+Comparando as duas linguagens levando em conta todos os dados da amostra, o número de modificações a arquivos js é bem superior do que a arquivos java. Isso sugere uma alta popularidade de uso de javascript em relação a java.
+
+```{r, fig.align='center', fig.cap="Figura 5 - Distribuição dos dados de acesso nos dias da semana e no fim de semana"}
+git_data_filter %>% 
+  group_by(date, file_extension) %>%
+  summarise(sum = sum(users)) %>%
+  ggplot(aes(x="", y=sum)) + 
+  geom_boxplot(alpha = 0.4)+
+  facet_grid(.~file_extension)+
+  labs(x = "Tipo de arquivo", y = "Nº de modificações por dia")
+  
 ```
 
 
+##Análise
+
+Para responder as perguntas, precisamos agrupar os dados em dois grupos para cada uma das linguagens avaliadas:
+
+Acessos durante a semana
+Acessos no fim de semana
+
+Em javascript
+
 ```{r}
-git_data %>%
-  group_by(the_year, the_month, users) %>% 
-  arrange(desc(users)) %>%
-  ggplot(aes(x = the_month, y = users, group=the_month)) + 
-  geom_boxplot(alpha = 0.4)+
-  facet_grid(.~the_year) + 
-  scale_x_continuous(breaks=unique(git_data$the_month))+
-  labs(x = "Nº do mês", y = "Nº de usuários a cada mês")
+
+git_js_other_days <- git_data_filter %>% filter(file_extension == "js") %>%
+  filter(!week_day %in% c("sábado", "domingo"))
+
+git_js_weekend_days <- git_data_filter %>% 
+  filter(file_extension == "js") %>%
+  filter(week_day %in% c("sábado", "domingo"))
+
+sample_weekend = sample(git_js_weekend_days$users, 200)
+sample_other_days = sample(git_js_weekend_days$users, 200)
+
+repeticoes = 4000 # pelo menos 2000, mas mais não faz mal.
+
+exp_com_bootstrap <- function(x){
+  boot_x <- sample(x, size = NROW(x), replace = TRUE) # aqui é o bootstrap
+  return(median(boot_x))
+}
+
+experimentos = data_frame(i = 1:repeticoes) %>%
+  rowwise() %>%
+  mutate(median = exp_com_bootstrap(sample))
+
+ggplot(experimentos, aes(x = median)) + 
+  geom_histogram(binwidth = 1, colour = "darkorange", fill = "white")
+summary(experimentos)
+
+# IC com 90%: 
+alpha = .05
+quantile(experimentos$median, 
+         probs = c(.05, .95))
+ci = quantile(experimentos$median, probs = c(alpha/2, 1 - alpha/2))
+
+ggplot(experimentos, aes(x = median)) + 
+  geom_histogram(binwidth = 1, colour = "darkorange", fill = "white") + 
+  geom_vline(aes(xintercept = ci[[1]]), colour = "blue") + 
+  geom_vline(aes(xintercept = ci[[2]]), colour = "blue") + 
+  geom_vline(aes(xintercept = sd(lastfm$news)), colour = "green")
 ```
