@@ -11,6 +11,7 @@ knitr::opts_knit$set(eval.after = 'fig.cap')
 library(tidyverse)
 library(broom)
 require(GGally, quietly = TRUE)
+library(resample)
 theme_set(theme_bw())
 ```
 
@@ -48,7 +49,7 @@ git_data_weekend <- git_data_filter %>% filter(week_day %in% c("sábado", "domin
 git_data_days_of_the_week <- git_data_filter %>% filter(!week_day %in% c("sábado", "domingo"))
 ```
 ## Introdução
-Esta pesquisa busca analisar arquivos com extensão .js e .java que são que correspondem a duas linguagens que estão bastante em alta no mercado de software, que são respectivamente as linguagens javascript usada para aplicações cliente que executam nos browsers e java muito usada em servidores.Além de java e javascript, há também dados de arquivos que não correspondem a nenhuma linguagem de programação como png e pdf por exemplo.
+Esta pesquisa busca analisar arquivos com extensão .js e .java que são que correspondem a duas linguagens que estão bastante em alta no mercado de software, que são respectivamente as linguagens javascript usada para aplicações cliente que executam nos browsers e java muito usada em servidores. Usaremos uma base de dados do próprio github que contém registros das modificações dos usuários em diversos arquivos em seus repositórios. Além de java e javascript, há também registros de modificações em diversos outros tipos de arquivos que correpspondem a outras linguagens ou não como por exemplo .py(python), .h(C++) e outras que não correspondem a nenhuma linguagem de programação como png(imagem) e pdf(para leitura de texto) por exemplo.
 
 Conforme o gráfico da figura 1, os arquivos que mais possuem alterações no git, são arquivos com extensão md. Estes arquivos são extensões do RMarkdown que é um pacote usado com a linguagem R para formatação de documentos para visualização de resultados de pesquisas usando o R. Os arquivos .js são o segundo mais modificado.
 
@@ -64,7 +65,7 @@ coord_flip()
 
 Para isso, é necessário selecionar apenas as informações referentes a estas linguagens. Portanto, os dados selecionados nesta pesquisa contém apenas informações das linguagens java e javascript.
 
-Esta pesquisa busca responder as seguintes perguntas:
+Esta pesquisa busca responder as seguintes **questões de pesquisa**:
 
 Há uma diferença significativa na popularidade das liguagens durante a semana e durante o fim de semana? 
 
@@ -82,28 +83,11 @@ git_data %>%
     labs(x="", y = "Total de acessos")
 ```
 
-A Figura 2 expressa a forma da distribuição dos dados referentes ao número de acessos de cada arquivo em 1 dia. Perceba que o retângulo na Figura 2 está um pouco acima de 2500, o que indica que 75% do número diário de acessos nesta amostra estão abaixo de 3000 acessos. Em compensação, alguns dias ultrapassaram os dez mil acessos diários em arquivos de extensão .md do RMarkdown. Não há nenhum arquivo que não teve 0 acessos para esta amostra.
+A Figura 2 expressa a forma da distribuição de todos os dados referentes ao número de acessos a cada arquivo pelos usuários do git. Perceba que o retângulo está um pouco acima de 2500, o que indica que 75% do número diário de acessos nesta amostra estão abaixo de 3000 acessos. Em compensação, alguns dias ultrapassaram os dez mil acessos diários em arquivos de extensão .md do RMarkdown. Pelo gráfico, é possível perceber que não há nenhum arquivo que teve 0 acessos em todo o conjunto de dados.
 
-Anualmente, temos que as distribuições são da seguinte forma
+Podemos ver também as distribuições mensais dos registros de modificações.Em alguns meses, o número de acessos são mais distribuídos que em outros. Na primeira metade de 2016 os dados são um pouco mais dispersos que a segunda metade e também o número de acessos diários um pouco mais alto, acima de 2500 acessos. Perceba que o mês 5 de 2017 é o menos distribuído pois é o mês que contém menos dados por ser o mês corrente quando esta pesquisa foi realizada.A conclusão é que não há muita diferença no número de acesso comparando cada mês.
 
-```{r, fig.align='center', fig.cap="Figura 3 - Distribuições do número de acesso por ano"}
-git_data %>%
-  group_by(file_extension, the_year) %>% 
-  summarise(sum = sum(users)) %>%
-  arrange(desc(sum)) %>%
-  ggplot(aes(x = "", y = sum)) + 
-  geom_boxplot(alpha = 0.4)+
-  facet_grid(.~the_year) + 
-  scale_y_continuous(labels = formata_label)+
-  labs(x = "Tipo de arquivo", y = "Nº de modificações no ano")
-
-```
-
-Note que na figura 3, no ano de 2017 os dados estão bem menos distribuídos do que em 2016. Perceba que isso ocorre devido a quantidade de dados coletados em 2017 é bem menor que 2016.
-
-Podemos ver também as distribuições mensais dos acessos. Alguns meses o número de acesso são mais distribuídos que em outros, a primeira metade de 2016 os dados são um pouco mais dispersos que a segunda metade e também o número de acessos diários um pouco mais alto, acima de 2500 acessos. Perceba que o mês 5 de 2017 é o menos distribuído pois é o mês que contém menos dados por ser o mês corrente quando esta pesquisa foi realizada.A conclusão é que não há muita diferença no número de acesso comparando cada mês.
-
-```{r, fig.align='center', fig.cap="Figura 4 - Distribuições do número de acesso mensal nos anos de 2016 e 2017"}
+```{r, fig.align='center', fig.cap="Figura 3 - Distribuições do número de acesso mensal nos anos de 2016 e 2017"}
 git_data %>%
   group_by(the_year, the_month, users) %>% 
   arrange(desc(users)) %>%
@@ -118,7 +102,7 @@ Como não houveram problemas nos dados, não foram feitos nenhum tratamento espe
 Vejamos as distribuições por dias da semana para ambas as linguagens
 
 
-```{r, fig.align='center', fig.cap="Figura 5 - Distribuição dos dados de acesso em dias úteis e no fim de semana para a linguagem java"}
+```{r, fig.align='center', fig.cap="Figura 4 - Distribuição dos dados de acesso em dias úteis e no fim de semana para a linguagem java"}
 x <- git_data_filter %>% 
   filter(file_extension == "java") %>%
   group_by(date, week_day) %>%
@@ -132,7 +116,7 @@ x %>%
   
 ```
 
-```{r, fig.align='center', fig.cap="Figura 6 - Distribuição dos dados de acesso em dias úteis e no fim de semana para a linguagem javascript"}
+```{r, fig.align='center', fig.cap="Figura 5 - Distribuição dos dados de acesso em dias úteis e no fim de semana para a linguagem javascript"}
 x <- git_data_filter %>% 
   filter(file_extension == "js") %>%
   group_by(date, week_day) %>%
@@ -146,16 +130,17 @@ x %>%
   
 ```
 
-Olhando para os gráficos, percebemos que o número de acessos no fim de semana é ligeiramente mais variado do que em dias de semana. A mediana (linha escura que divide o retângulo do gráfico) parece ser menor para os fins de semana. Porém, de forma geral não são variações muito significativas e o número de outliers é muito baixo, o que indica que valores discrepantes não estão fazendo a diferença no aumento ou diminuição dos números de acessos totais em algum dia da semana.
+Olhando para os gráficos das Figuras 4 e 5, percebemos que o número de acessos no fim de semana é ligeiramente mais variado do que em dias de semana. A mediana (linha escura que divide o retângulo do gráfico) parece ser menor para os fins de semana. Porém, de forma geral não são variações muito significativas e o número de outliers é muito baixo, o que indica que valores discrepantes não estão fazendo a diferença no aumento ou diminuição dos números de acessos totais em algum dia da semana.
 
-Comparando as duas linguagens levando em conta todos os dados da amostra, o número de modificações a arquivos js é bem superior do que a arquivos java. Isso sugere uma alta popularidade de uso de javascript em relação a java.
+Comparando as duas linguagens na Figura 6, levando em conta todos os dados da amostra, o número de modificações a arquivos js é bem superior do que a arquivos java. Isso sugere uma alta popularidade de uso de javascript em relação a java.
 
-```{r, fig.align='center', fig.cap="Figura 5 - Distribuição dos dados de acesso nos dias da semana e no fim de semana"}
+```{r, fig.align='center', fig.cap="Figura 6 - Distribuição dos dados de acesso das duas linguagens considerando toda a amostra de dados"}
 git_data_filter %>% 
   group_by(date, file_extension) %>%
   summarise(sum = sum(users)) %>%
   ggplot(aes(x="", y=sum)) + 
-  geom_boxplot(alpha = 0.4)+
+  geom_boxplot(alpha = 0.4, color="red", outlier.colour="red")+
+  geom_point(position = position_jitter(h=0,w=0.3)) +
   facet_grid(.~file_extension)+
   labs(x = "Tipo de arquivo", y = "Nº de modificações por dia")
   
@@ -173,24 +158,162 @@ Para inferir alguma coisa sobre as modificações do github, é necessário faze
 
 Nesta pesquisa, os parâmetros escolhidos que analizsaremos são a mediana e o desvio padrão.
 
+Para isso, é necessário estimar um parâmetro para as subpopulações de registros de modificações que é uma outra população contida na população maior. essas subpopulações são conjuntos de modificações que foram feitas em arquivos .js e .java. 
 
-```{r}
-set.seed(123)
+A média não é um bom estimado, pois se altera facilmente por valores muito altos e muito baixos e a mediana é uma opção melhor. Por isso, é necessário encontrar primeiro intervalos, em que a chance da mediana da população original possa estar seja de 95%.
 
-```
+```{r, fig.align='center', fig.cap="Figura 7 - Bootstrap das medianas para os dados das modificações em arquivos .js no fim de semana"}
 
-Se compararmos os intervalos de confiança de cada grupo poderemos ver com uma confiança de 95% onde a mediana dos dois grupos é mais provável de está quando uma amostra for selecionada
-```{r}
-library(resample)
-b1 = git_data_weekend %>% 
+git_js_weekend <- git_data_filter %>% 
   filter(file_extension == "js") %>%
+  filter(week_day %in% c("sábado", "domingo"))
+
+b1 = git_js_weekend %>% 
   bootstrap(median(users))
 
 median.weekend = b1 %>% 
   CI.percentile(probs = c(.025, .975))
 
-b2 = git_data_days_of_the_week %>% 
+df.median = data.frame(median.weekend)
+data.frame(b1$replicates)%>% 
+  ggplot(aes(x=median.users.)) +
+  geom_histogram(binwidth = 10, colour = "darkorange", fill = "white") + 
+  geom_vline(aes(xintercept = df.median$X2.5.), colour = "blue") + 
+  geom_vline(aes(xintercept = df.median$X97.5.), colour = "blue") + 
+  geom_vline(aes(xintercept = b1$observed), colour = "green")+
+  labs(x = "distribuição das medianas das amostras", y = "Frequência de medianas")
+```
+
+
+```{r, fig.align='center', fig.cap="Figura 8 - Bootstrap das medianas para os dados das modificações em arquivos .js em dias úteis"}
+
+git_js_other_days <- git_data_filter %>% 
   filter(file_extension == "js") %>%
+  filter(!week_day %in% c("sábado", "domingo"))
+
+b1 = git_js_other_days %>% 
+  bootstrap(median(users))
+
+median.weekend = b1 %>% 
+  CI.percentile(probs = c(.025, .975))
+
+df.median = data.frame(median.weekend)
+data.frame(b1$replicates)%>% 
+  ggplot(aes(x=median.users.)) +
+  geom_histogram(binwidth = 10, colour = "darkorange", fill = "white") + 
+  geom_vline(aes(xintercept = df.median$X2.5.), colour = "blue") + 
+  geom_vline(aes(xintercept = df.median$X97.5.), colour = "blue") + 
+  geom_vline(aes(xintercept = b1$observed), colour = "green")+
+  labs(x = "Distribuição das medianas das amostras", y = "Frequência de medianas")
+```
+
+
+
+```{r, warning=FALSE, fig.align='center', fig.cap="Figura 9 - Comparação entre os intervalos de confiança das medianas de dias úteis e fim de semana para javascript"}
+
+# Médias dos grupos separados
+b1 = git_js_weekend %>% 
+  bootstrap(median(users))
+
+median.weekend = b1 %>% 
+  CI.percentile(probs = c(.025, .975))
+
+b2 = git_js_other_days %>% 
+  bootstrap(median(users))
+
+median.other_days = b2 %>% 
+  CI.percentile(probs = c(.025, .975))
+
+df.median = data.frame(rbind(median.weekend, median.other_days))
+df.median
+
+df.median$groups = c("Fim de semana", "Dias úteis")
+
+df.median %>% 
+  ggplot(aes(x = groups, ymin = X2.5., ymax = X97.5.)) + 
+  geom_errorbar(width = .2) +
+  labs(x = "Tipo de arquivo", y = "Possível valor da mediana")
+
+```
+As figuras 7 e 8 estão representadas de outra forma na figura 10. O intervalo de confiança da figura 10 a esquerda corresponde ao intervalo mostrado na figura 8 enquanto que o da direita corresponde ao intervalo encontrado na figura 7. A partir desse gráfico é possível perceber uma certa semelhança entre os dois grupos, o que indica que as popularidades de javascript parecem ser as mesmas tanto para fins de semana quanto para dias de semana comuns. 
+
+Uma outra forma de verificar a semelhança entre grupos e que mostra mais informações sobre o quão os grupos são discrepantes, é coletar amostras desses dois grupos e gerar uma distribuição da diferença entre os parâmetros observados nos bootstraps das amostras. Por exemplo, se pegarmos uma amostra bootstrap da primeira amostra e uma outra da segunda a mostra e subtrairmos, teremos o primeiro valor da distribuição de diferenças. Ora, quanto mais o intervalo de confiança gerado estiver "concentrado" em torno de zero, então há indícios de que os grupos são semelhantes.
+
+```{r, fig.align='center', fig.cap="Figura 10 - Intervalo de confiança da diferença para javascript"}
+# Agora a diferença das médias
+b.diff.median = bootstrap2(data = git_js_other_days$users, 
+                           data2 = git_js_weekend$users,
+                          median)
+
+median.diff = CI.percentile(b.diff.median, probs = c(.025, .975))
+median.diff
+
+data.frame(median.diff) %>% 
+  ggplot(aes(x = "", ymin = X2.5., ymax = X97.5.)) + 
+  geom_errorbar(width = .2) + 
+  geom_hline(yintercept = 0, colour = "darkorange")+
+  labs(x = "", y = "Diferença entre as medianas para javascript")
+```
+
+Perceba que o intervalo da diferença para a linguagem javascript contém 0, mas o intervalo é "esticado" e não se encontra "encolhido" ao redor de 0. Mesmo assim, ainda há a possibilidade de que a diferença entre os dois grupos seja 0 na população original. Apenas encontramos indícios de que usando um intervalo de confiança de 95% há possibilidade de que a popularidade, expressa através do número de modificações feitas em arquivos da linguagem, seja diferente em dias úteis e fins de semana para javascript.
+
+Para a linguagem java algo semelhante ocorre, e os resultados podem ser praticamente os mesmos que foram para javascript. Os intervalos se sobrepõem na figura 13, mas na figura 14 o intervalo com confiança de 95% de confiança contém 0, mas não se concentra próximo de zero, deixando indícios de que  
+
+```{r, fig.align='center', fig.cap="Figura 11 - Distribuição da diferença entre as amostras das modificações em arquivos .java"}
+git_java_weekend_days <- git_data_filter %>% 
+  filter(file_extension == "java") %>%
+  filter(week_day %in% c("sábado", "domingo"))
+
+b1 = git_java_weekend_days %>% 
+  bootstrap(median(users))
+
+median.weekend = b1 %>% 
+  CI.percentile(probs = c(.025, .975))
+median.weekend
+
+df.median = data.frame(median.weekend)
+data.frame(b1$replicates)%>% 
+  ggplot(aes(x=median.users.)) +
+  geom_histogram(binwidth = 10, colour = "darkorange", fill = "white") + 
+  geom_vline(aes(xintercept = df.median$X2.5.), colour = "blue") + 
+  geom_vline(aes(xintercept = df.median$X97.5.), colour = "blue") + 
+  geom_vline(aes(xintercept = b1$observed), colour = "green")+
+  labs(x = "Distribuição das medianas das amostras", y = "Frequência de medianas")
+```
+
+
+
+```{r, fig.align='center', fig.cap="Figura 12 - Distribuição da diferença entre as amostras das modificações em arquivos .java"}
+git_java_other_days <- git_data_filter %>% 
+  filter(file_extension == "java") %>%
+  filter(!week_day %in% c("sábado", "domingo"))
+
+b1 = git_java_other_days %>% 
+  bootstrap(median(users))
+
+median.weekend = b1 %>% 
+  CI.percentile(probs = c(.025, .975))
+
+df.median = data.frame(median.weekend)
+data.frame(b1$replicates)%>% 
+  ggplot(aes(x=median.users.)) +
+  geom_histogram(binwidth = 10, colour = "darkorange", fill = "white") + 
+  geom_vline(aes(xintercept = df.median$X2.5.), colour = "blue") + 
+  geom_vline(aes(xintercept = df.median$X97.5.), colour = "blue") + 
+  geom_vline(aes(xintercept = b1$observed), colour = "green")+
+  labs(x = "Distribuição das medianas das amostras", y = "Frequência de medianas")
+```
+
+```{r, fig.align='center', fig.cap="Figura 13 - Comparação entre os intervalos de confiança das medianas de dias úteis e fim de semana para java"}
+
+# Médias dos grupos separados
+b1 = git_java_weekend_days %>% 
+  bootstrap(median(users))
+
+median.weekend = b1 %>% 
+  CI.percentile(probs = c(.025, .975))
+
+b2 = git_java_other_days %>% 
   bootstrap(median(users))
 
 median.other_days = b2 %>% 
@@ -198,58 +321,54 @@ median.other_days = b2 %>%
 
 df.median = data.frame(rbind(median.weekend, 
                              median.other_days))
-df.median$measurement = c("Fins de semana", "Dias de semana")
+df.median$groups = c("Fim de semana", "Dias úteis")
 
 df.median %>% 
-  ggplot(aes(x = measurement, ymin = X2.5., ymax = X97.5.)) + 
-  geom_errorbar(width = .2)
+  ggplot(aes(x = groups, ymin = X2.5., ymax = X97.5.)) + 
+  geom_errorbar(width = .2) +
+  labs(x = "Tipo de arquivo", y = "Possível valor da mediana")
 
-
-
-
-
-
-
-
-
-
-
-
-
-git_js_other_days <- git_data_filter %>% filter(file_extension == "js") %>%
-  filter(!week_day %in% c("sábado", "domingo"))
-
-git_js_weekend_days <- git_data_filter %>% 
-  filter(file_extension == "js") %>%
-  filter(week_day %in% c("sábado", "domingo"))
-
-sample_weekend = sample(git_js_weekend_days$users, 200)
-sample_other_days = sample(git_js_weekend_days$users, 200)
-
-repeticoes = 4000 # pelo menos 2000, mas mais não faz mal.
-
-exp_com_bootstrap <- function(x){
-  boot_x <- sample(x, size = NROW(x), replace = TRUE) # aqui é o bootstrap
-  return(median(boot_x))
-}
-
-experimentos = data_frame(i = 1:repeticoes) %>%
-  rowwise() %>%
-  mutate(median = exp_com_bootstrap(sample))
-
-ggplot(experimentos, aes(x = median)) + 
-  geom_histogram(binwidth = 1, colour = "darkorange", fill = "white")
-summary(experimentos)
-
-# IC com 90%: 
-alpha = .05
-quantile(experimentos$median, 
-         probs = c(.05, .95))
-ci = quantile(experimentos$median, probs = c(alpha/2, 1 - alpha/2))
-
-ggplot(experimentos, aes(x = median)) + 
-  geom_histogram(binwidth = 1, colour = "darkorange", fill = "white") + 
-  geom_vline(aes(xintercept = ci[[1]]), colour = "blue") + 
-  geom_vline(aes(xintercept = ci[[2]]), colour = "blue") + 
-  geom_vline(aes(xintercept = sd(lastfm$news)), colour = "green")
 ```
+
+
+```{r, fig.align='center', fig.cap="Figura 14 - Intervalo de confiança da diferença para java"}
+# Agora a diferença das médias
+b.diff.median = bootstrap2(data = git_java_other_days$users, 
+                           data2 = git_java_weekend_days$users,
+                          median)
+
+median.diff = CI.percentile(b.diff.median, probs = c(.025, .975))
+median.diff
+
+data.frame(median.diff) %>% 
+  ggplot(aes(x = "Diferença", ymin = X2.5., ymax = X97.5.)) + 
+  geom_errorbar(width = .2) + 
+  geom_hline(yintercept = 0, colour = "darkorange")
+```
+
+
+Agora comparamos a diferença entre os grupos, de modificações feitas em dias úteis, para java e javascript com o objetivo de avaliar se há diferença entre a popularidade de java e javascript em dias de semana. 
+
+Para esta parte, usamos o desvio padrão como parâmetro amostral, pois será mais consistente nesta parte que visa responder a segunda questão de pesquisa, ao invés da mediana que vinha sendo usado no decorrer desta pesquisa. A figura 15 mostra o intervalo com 95% de confiança da diferença entre os desvios padrões calculados a partir de amostras de dados de dias de semana para java e para javascript. Em outras palavras, temos o intervalo de confiança para a diferença entre as popularidades de java e javascript em dias úteis. Esse intervalo, por não conter zero e não está próximo de zero, mostra indícios de que são bastante diferentes as as variações de popularidades de java e javascript em dias de semana. Portanto podemos considerar, bastante discrepante a forma como as modificações são feitas em arquivos java e javascript em dias úteis.
+
+
+```{r, fig.align='center', fig.cap="Figura 15 - Distribuição da diferença para ambas as linguagens em dias de semana"}
+# Agora a diferença das médias
+b.diff.median = bootstrap2(data = git_js_other_days$users, 
+                           data2 = git_java_other_days$users, sd)
+
+median.diff = CI.percentile(b.diff.median, probs = c(.025, .975))
+median.diff
+
+data.frame(median.diff) %>% 
+  ggplot(aes(x = "Diferença", ymin = X2.5., ymax = X97.5.)) + 
+  geom_errorbar(width = .2) + 
+  geom_hline(yintercept = 0, colour = "darkorange")
+```
+
+
+##Conclusões
+
+Com isso, podemos concluir que há sim, há uma certa diferença entre as modificações feitas em arquivos de java e javascript durante a semana e no fim de semana e podemos inferir isso para a população, isto é, geralmente os usuários do git trabalham com java e javascript de forma diferente se compararmos dias de semana com fins de semana.
+
+Quanto a diferença entre a variação de popularidade daas linguagens para dias de semana, a pesquisa mostrou indícios fortes de que há diferença na forma com que os usuários do git trabalham com java e javascript em dias de semana e podemos inferir para a população, isto é, geralmente os usuários do git trabalham de forma diferente em dias de semana com java e javascript.
