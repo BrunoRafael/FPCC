@@ -367,7 +367,7 @@ data.frame(median.diff) %>%
 ```
 
 
-##Conclusões
+##Considerações finais
 
 Com isso, podemos concluir que há sim, há uma certa diferença entre as modificações feitas em arquivos de java e javascript durante a semana e no fim de semana e podemos inferir isso para a população, isto é, geralmente os usuários do git trabalham com java e javascript de forma diferente se compararmos dias de semana com fins de semana.
 
