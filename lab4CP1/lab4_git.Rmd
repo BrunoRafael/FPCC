@@ -232,7 +232,7 @@ df.median$groups = c("Fim de semana", "Dias úteis")
 df.median %>% 
   ggplot(aes(x = groups, ymin = X2.5., ymax = X97.5.)) + 
   geom_errorbar(width = .2) +
-  labs(x = "Tipo de arquivo", y = "Possível valor da mediana")
+  labs(x = "Intervalos de confiança", y = "Possível valor da mediana")
 
 ```
 As figuras 7 e 8 estão representadas de outra forma na figura 10. O intervalo de confiança da figura 10 a esquerda corresponde ao intervalo mostrado na figura 8 enquanto que o da direita corresponde ao intervalo encontrado na figura 7. A partir desse gráfico é possível perceber uma certa semelhança entre os dois grupos, o que indica que as popularidades de javascript parecem ser as mesmas tanto para fins de semana quanto para dias de semana comuns. 
@@ -252,7 +252,7 @@ data.frame(median.diff) %>%
   ggplot(aes(x = "", ymin = X2.5., ymax = X97.5.)) + 
   geom_errorbar(width = .2) + 
   geom_hline(yintercept = 0, colour = "darkorange")+
-  labs(x = "", y = "Diferença entre as medianas para javascript")
+  labs(x = "Intervalo de confiança", y = "Diferença entre as medianas para javascript")
 ```
 
 Perceba que o intervalo da diferença para a linguagem javascript contém 0, mas o intervalo é "esticado" e não se encontra "encolhido" ao redor de 0. Mesmo assim, ainda há a possibilidade de que a diferença entre os dois grupos seja 0 na população original. Apenas encontramos indícios de que usando um intervalo de confiança de 95% há possibilidade de que a popularidade, expressa através do número de modificações feitas em arquivos da linguagem, seja diferente em dias úteis e fins de semana para javascript.
@@ -326,7 +326,7 @@ df.median$groups = c("Fim de semana", "Dias úteis")
 df.median %>% 
   ggplot(aes(x = groups, ymin = X2.5., ymax = X97.5.)) + 
   geom_errorbar(width = .2) +
-  labs(x = "Tipo de arquivo", y = "Possível valor da mediana")
+  labs(x = "Intervalos de confiança", y = "Possível valor da mediana")
 
 ```
 
@@ -341,7 +341,7 @@ median.diff = CI.percentile(b.diff.median, probs = c(.025, .975))
 median.diff
 
 data.frame(median.diff) %>% 
-  ggplot(aes(x = "Diferença", ymin = X2.5., ymax = X97.5.)) + 
+  ggplot(aes(x = "Intervalo de confiança", ymin = X2.5., ymax = X97.5.)) + 
   geom_errorbar(width = .2) + 
   geom_hline(yintercept = 0, colour = "darkorange")
 ```
@@ -361,7 +361,7 @@ median.diff = CI.percentile(b.diff.median, probs = c(.025, .975))
 median.diff
 
 data.frame(median.diff) %>% 
-  ggplot(aes(x = "Diferença", ymin = X2.5., ymax = X97.5.)) + 
+  ggplot(aes(x = "Intervalo de confiança", ymin = X2.5., ymax = X97.5.)) + 
   geom_errorbar(width = .2) + 
   geom_hline(yintercept = 0, colour = "darkorange")
 ```
@@ -369,6 +369,6 @@ data.frame(median.diff) %>%
 
 ##Considerações finais
 
-Com isso, podemos concluir que há sim, há uma certa diferença entre as modificações feitas em arquivos de java e javascript durante a semana e no fim de semana e podemos inferir isso para a população, isto é, geralmente os usuários do git trabalham com java e javascript de forma diferente se compararmos dias de semana com fins de semana.
+Com isso, podemos concluir baseado na amostra coletada, que há uma certa diferença entre as modificações feitas em arquivos java e javascript durante a semana e no fim de semana e podemos inferir isso para a população, isto é, geralmente os usuários do git trabalham com java e javascript de forma diferente se compararmos dias de semana com fins de semana.
 
-Quanto a diferença entre a variação de popularidade daas linguagens para dias de semana, a pesquisa mostrou indícios fortes de que há diferença na forma com que os usuários do git trabalham com java e javascript em dias de semana e podemos inferir para a população, isto é, geralmente os usuários do git trabalham de forma diferente em dias de semana com java e javascript.
+Quanto a diferença entre a variação de popularidade das linguagens para dias de semana, a pesquisa mostrou indícios fortes de que há diferença na forma com que os usuários do git trabalham com java e javascript em dias de semana e podemos inferir para a população, isto é, geralmente os usuários do git trabalham de forma diferente em dias de semana com java e javascript.
