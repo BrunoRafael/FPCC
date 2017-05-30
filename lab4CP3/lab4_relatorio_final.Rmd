@@ -1,5 +1,5 @@
 ---
-title: "lab4_relatorio_final"
+title: "Análise das modificações feitas pelos usuários do github em seus repositórios - parte 2"
 author: "Bruno Rafael Araújo Vasconcelos"
 date: "30 de maio de 2017"
 output: html_document
@@ -7,35 +7,120 @@ output: html_document
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_knit$set(eval.after = 'fig.cap')
+library(tidyverse)
+library(broom)
+require(GGally, quietly = TRUE)
+library(resample)
+theme_set(theme_bw())
+
+formata_label = function(l){
+  # existem funções para formatar com , sendo milhar e . sendo decimal (scales::comma)
+  # mas em pt_br é o contrário. essa função serve para isso
+  format(l, big.mark = ".", scientific = FALSE, trim = TRUE, decimal.mark = ",")
+} 
 ```
-Nesta pesquisa os dados avaliados novamente são os dados do github só que buscando responder perguntas diferentes. Os dados podem ser encontrados neste [link](https://raw.githubusercontent.com/nazareno/fpcc2/master/datasets/github-users-committing-filetypes.csv) e o projeto para esta pesquisa pode ser encontrado [aqui]()
 
+```{r pressure, warning=FALSE, include=FALSE}
+git_data <- read_csv(url("https://raw.githubusercontent.com/nazareno/fpcc2/master/datasets/github-users-committing-filetypes.csv"))
 
+git_data_filter <- git_data %>% mutate(date = paste(month_day, the_month, the_year, sep="-"))
 
-É mais divertido programar ou escrever documentos em uma sexta-feira por exemplo? Baseado nos dados do git o que podemos responder a respeito disso? E quanto a linguagem x e a y
+git_data_filter$week_day <- weekdays(as.Date(git_data_filter$date))
 
+git_languages_data1  <- git_data_filter %>% 
+  filter(file_extension %in% c("js", "java")) %>%
+  filter(week_day %in% c("segunda-feira"))
+
+git_languages_data2  <- git_data_filter %>% 
+  filter(week_day %in% c("quarta-feira", "sexta-feira")) %>%
+  filter(file_extension %in% c("py", "md"))
+```
+
+Os dados avaliados nesta pesquisa, são os dados de uma amostra do histórico de modificações feitas por usuários do github nos últimos dois anos(2016 e 2017). Os dados podem ser encontrados neste [link](https://raw.githubusercontent.com/nazareno/fpcc2/master/datasets/github-users-committing-filetypes.csv) e o projeto para esta pesquisa pode ser encontrado [aqui](https://github.com/BrunoRafael/FPCC/tree/master/lab4CP3)
+
+A tabela com os dados da amostra usada aqui possui 5 colunas e são elas: 
+
+*file_extension* -> A extensão do arquivo modificado
+*month_day* -> O dia do mês em que a modificação ocorreu
+*the_month* -> O mês do ano em que a modificação ocorreu
+*the_year* -> O ano em que a modificação ocorreu
+*users* -> O número de modificações feitas por usuários diferentes na mesma extensão em seus repositórios particulares.
+
+Estas colunas são chamadas de **variáveis** pois para cada observação(linha da coluna) o valor varia.
+
+*NOTA: Algumas perguntas feitas na parte 2 deste lab não foram bem elaboradas. Para tornar essa parte mais interessante foi ncessário que eu modificasse uma das perguntas que fiz. A pergunta 2 desta pesquisa não está na entrega 2 do lab.*
 
 ## Introdução
+Basicamente, serão respondidas algumas perguntas sobre as linguagens que os usuários mais programam em diferentes dias da semana levando em consideração as alterações feitas em seus repositórios. Por exemplo, é mais divertido programar usando python ou Markdown em uma sexta-feira? O que podemos inferir de forma geral a respeito disso? As perguntas respondidas serão as seguintes:
 
-A segunda feira é um dia mais provável para se programar em java ou javascript?
+Na segunda feira é mais provável que os usuários programem em java ou javascript?
 
-R: Programar em javascript, é mais divertido.
+Comparando a quarta com a sexta em cada um dos dias, é mais provável que os usuários programem em python ou Markdown?
 
+Respondendo a estas perguntas para a amostra de dados utilizada, será possível inferir de forma geral, para todos os usuários do github.
 
-A sexta feira é um dia mais provável para se programar(nas 2 linguagens mais populares) ou escrever documentos?
+Como os dados possuem apenas as extensões dos arquivos, é necessário saber quais tipos de arquivos os compiladores das linguagens avaliadas são capazes de compilar. Por exemplo, o compilador de java compila arquivos com extensão .java e o de javascript interpretam arquivos com extensão .js, o de Markdown .md e o interpretador de python extensões .py. Portanto, foram selecionados apenas os dados referentes as extensões *.java*, *.js*, *.py* ou *.md*
 
-R: Acho que não há diferença, a sexta é um dia em que se pode programar ou escrever documentos, ou até mesmo nenhum dos dois.
+## Visão geral dos dados utilizados
 
-```{r cars}
-summary(cars)
+Inicialmente, é necessário visualizar os dados de forma geral para entender como variam e quais os valores máximos e mínimos de modificações feitas pelos usuários em determinado tipo de arquivo. Para as variáveis **the_month**, **month_day** e **the_year** os valores possíveis não são muitos. 
+
+**Para a variável *the_month* ** :
+```{r echo=FALSE}
+sort(unique(git_data$the_month))
 ```
 
-## Including Plots
-
-You can also embed plots, for example:
-
-```{r pressure, echo=FALSE}
-plot(pressure)
+**Para a variável *month_day* **
+```{r echo=FALSE}
+sort(unique(git_data$month_day))
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+**Para a variável *the_year* **
+
+```{r echo=FALSE}
+sort(unique(git_data$the_year))
+```
+
+A variável *users* é a única que possui valores reais. A figura 1 mostra a distribuição de valores da variável users.
+
+```{r, fig.align='center', fig.cap="Figura 1 - Distribuição do número de modificações feitas em cada tipo de arquivo", echo=FALSE}
+git_data %>% 
+    ggplot(aes(x ="Extensão", y=users)) +
+    geom_boxplot(alpha = 0.4, color="black", fill="#5ec1bb") +
+    labs(x="", y = "Total de acessos")
+```
+
+Através do gráfico da figura 1 é possível perceber que o maior número de alterações feitas em um dia é maior que dez mil. De forma exata o valor é
+
+```{r}
+max(git_data$users)
+```
+
+O gráfico também mostra que 75% dos valores dos totais de alterações feitas em um único dia está abaixo de 2800. Os valores são concentrados e próximos da mediana(valor que divide a sequência de números, se fossem ordenados em fila indiana do menor para do maior, em duas partes iguais) isso significa que não variam muito e que estão próximos de um valor comum.
+
+Conforme o gráfico da figura 2, que vimos na parte 1 da pesquisa, os arquivos que mais possuem alterações no git, são arquivos com extensão md. Estes arquivos são extensões do RMarkdown que é um pacote usado com a linguagem R para formatação de documentos para visualização de resultados de pesquisas usando o R. Os arquivos .js são o segundo mais modificado.
+
+```{r, fig.align='center', fig.cap="Figura 2 - Frequência de acesso por arquivo", echo=FALSE}
+git_data %>% group_by(file_extension) %>% 
+summarise(sum = sum(users)) %>%
+ggplot(aes(x = reorder(as.factor(file_extension), sum), y = sum)) + 
+geom_point(color = "darkblue", stat = "identity") +
+labs(x="Extensão do arquivo", y = "Nº de alterações durante os dois anos avaliados")+
+scale_y_continuous(labels = formata_label)+
+coord_flip()
+```
+##Análise dos dados
+
+```{r fig.align='center', fig.cap="Figura 3 - Comparação entre as distribuições de java e javascript em uma segunda-feira"}
+git_languages_data1 %>%
+  group_by(date, file_extension) %>%
+  summarise(sum = sum(users)) %>%
+  ggplot(aes(x="", y=sum)) + 
+  geom_boxplot(alpha = 0.4, color="darkblue")+
+  geom_point(position = position_jitter(h=0,w=0.3),alpha=0.4) +
+  facet_grid(.~file_extension)+
+  labs(x = "Tipo de arquivo", y = "Nº de modificações por dia")
+```
+
+## Considerações finais
