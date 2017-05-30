@@ -1,0 +1,41 @@
+---
+title: "lab4_relatorio_final"
+author: "Bruno Rafael Araújo Vasconcelos"
+date: "30 de maio de 2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+Nesta pesquisa os dados avaliados novamente são os dados do github só que buscando responder perguntas diferentes. Os dados podem ser encontrados neste [link](https://raw.githubusercontent.com/nazareno/fpcc2/master/datasets/github-users-committing-filetypes.csv) e o projeto para esta pesquisa pode ser encontrado [aqui]()
+
+
+
+É mais divertido programar ou escrever documentos em uma sexta-feira por exemplo? Baseado nos dados do git o que podemos responder a respeito disso? E quanto a linguagem x e a y
+
+
+## Introdução
+
+A segunda feira é um dia mais provável para se programar em java ou javascript?
+
+R: Programar em javascript, é mais divertido.
+
+
+A sexta feira é um dia mais provável para se programar(nas 2 linguagens mais populares) ou escrever documentos?
+
+R: Acho que não há diferença, a sexta é um dia em que se pode programar ou escrever documentos, ou até mesmo nenhum dos dois.
+
+```{r cars}
+summary(cars)
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
