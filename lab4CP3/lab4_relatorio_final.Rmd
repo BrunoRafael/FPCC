@@ -6,13 +6,14 @@ output: html_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = TRUE, out.width='750px', dpi=200)
 knitr::opts_knit$set(eval.after = 'fig.cap')
 library(tidyverse)
 library(broom)
 require(GGally, quietly = TRUE)
 library(resample)
 library(plotly)
+library(knitr)
 source("plot_manager.R")
 theme_set(theme_bw())
 
@@ -32,24 +33,32 @@ git_data_filter$week_day <- weekdays(as.Date(git_data_filter$date))
 
 git_languages_data1  <- git_data_filter %>%
   filter(file_extension %in% c("js", "java")) %>%
-  filter(week_day %in% c("segunda"))
+  filter(week_day %in% c("segunda", "segunda-feira"))
 
 git_languages_data2  <- git_data_filter %>% 
-  filter(week_day %in% c("quarta", "sexta")) %>%
+  filter(week_day %in% c("quarta", "quarta-feira", "sexta", "sexta-feira")) %>%
   filter(file_extension %in% c("py", "md"))
 ```
 
-Os dados avaliados nesta pesquisa, são os dados de uma amostra do histórico de modificações feitas por usuários do github nos últimos dois anos(2016 e 2017). Os dados podem ser encontrados neste [link](https://raw.githubusercontent.com/nazareno/fpcc2/master/datasets/github-users-committing-filetypes.csv) e o projeto para esta pesquisa pode ser encontrado [aqui](https://github.com/BrunoRafael/FPCC/tree/master/lab4CP3)
+Os dados avaliados nesta pesquisa, são os dados de uma amostra do histórico de modificações feitas por usuários do github em seus repositórios nos últimos dois anos(2016 e 2017). Os dados podem ser encontrados neste [link](https://raw.githubusercontent.com/nazareno/fpcc2/master/datasets/github-users-committing-filetypes.csv) e o projeto para esta pesquisa pode ser encontrado [aqui](https://github.com/BrunoRafael/FPCC/tree/master/lab4CP3)
 
 A tabela com os dados da amostra usada aqui possui 5 colunas e são elas: 
 
-*file_extension* -> A extensão do arquivo modificado
-*month_day* -> O dia do mês em que a modificação ocorreu
-*the_month* -> O mês do ano em que a modificação ocorreu
-*the_year* -> O ano em que a modificação ocorreu
-*users* -> O número de modificações feitas por usuários diferentes na mesma extensão em seus repositórios particulares.
+- *file_extension* -> A extensão do arquivo modificado
+- *month_day* -> O dia do mês em que a modificação ocorreu
+- *the_month* -> O mês do ano em que a modificação ocorreu
+- *the_year* -> O ano em que a modificação ocorreu
+- *users* -> O número de modificações feitas por usuários diferentes na mesma extensão em seus repositórios particulares.
 
-Estas colunas são chamadas de **variáveis** pois para cada observação(linha da coluna) o valor varia.
+Estas colunas são chamadas de **variáveis** pois para cada observação(linha da coluna) o valor da coluna varia.
+
+Para esta pesquisa foram usados os seguintes parâmetros populacionais
+ 1. A variância da população
+ 2. A mediana da população
+
+A **variância da população** e a **mediana da população** quando calculadas na amostra serão chamadas de **variância da amostra** e **mediana da amostra**. Elas serão as **estimativas** para parâmetros populacionais.
+
+Uma amostra gerada a partir da amostra principal usada nessa pesquisa, será chamada de subamostra. O processo de gerar várias subamostras para calcular a distribuição dos parâmetros(variância ou mediana) amostrais será chamado de **bootstrap**
 
 *NOTA: Algumas perguntas feitas na parte 2 deste lab não foram bem elaboradas. Para tornar essa parte mais interessante foi ncessário que eu modificasse uma das perguntas que fiz. A pergunta 2 desta pesquisa não está na entrega 2 do lab.*
 
@@ -58,7 +67,7 @@ Basicamente, serão respondidas algumas perguntas sobre as linguagens que os usu
 
 Na segunda feira é mais provável que os usuários programem em java ou javascript?
 
-Comparando a quarta com a sexta em cada um dos dias, é mais provável que os usuários programem em python ou Markdown?
+Existe uma diferença significativa de variação do número de modificações nos arquivos das duas linguagens quando se compara a quarta com a sexta?
 
 Respondendo a estas perguntas para a amostra de dados utilizada, será possível inferir de forma geral, para todos os usuários do github.
 
@@ -84,7 +93,7 @@ sort(unique(git_data$month_day))
 sort(unique(git_data$the_year))
 ```
 
-A variável *users* é a única que possui valores reais. A figura 1 mostra a distribuição de valores da variável users.
+A variável *users* é a única que possui valores reais. A Figura 1 mostra a distribuição de valores da variável users.
 
 ```{r, fig.align='center', fig.cap="Figura 1 - Distribuição do número de modificações feitas em cada tipo de arquivo", echo=FALSE}
 git_data %>% 
@@ -93,7 +102,7 @@ git_data %>%
     labs(x="", y = "Total de acessos")
 ```
 
-Através do gráfico da figura 1 é possível perceber que o maior número de alterações feitas em um dia é maior que dez mil. De forma exata o valor é
+Através do gráfico da Figura 1 é possível perceber que o maior número de alterações feitas em um dia é maior que dez mil. De forma exata o valor é
 
 ```{r}
 max(git_data$users)
@@ -101,7 +110,7 @@ max(git_data$users)
 
 O gráfico também mostra que 75% dos valores dos totais de alterações feitas em um único dia está abaixo de 2800. Os valores são concentrados e próximos da mediana(valor que divide a sequência de números, se fossem ordenados em fila indiana do menor para do maior, em duas partes iguais) isso significa que não variam muito e que estão próximos de um valor comum.
 
-Conforme o gráfico da figura 2, que vimos na parte 1 da pesquisa, os arquivos que mais possuem alterações no git, são arquivos com extensão md. Estes arquivos são extensões do RMarkdown que é um pacote usado com a linguagem R para formatação de documentos para visualização de resultados de pesquisas usando o R. Os arquivos .js são o segundo mais modificado.
+Conforme o gráfico da Figura 2, que vimos na parte 1 da pesquisa, os arquivos que mais possuem alterações no git, são arquivos com extensão md. Estes arquivos são extensões do RMarkdown que é um pacote usado com a linguagem R para formatação de documentos para visualização de resultados de pesquisas usando o R. Os arquivos .js são o segundo mais modificado.
 
 ```{r, fig.align='center', fig.cap="Figura 2 - Frequência de acesso por arquivo", echo=FALSE}
 git_data %>% group_by(file_extension) %>% 
@@ -115,7 +124,7 @@ coord_flip()
 ##Análise dos dados
 Para responder a primeira pergunta, é necessário saber como se comportam o número de modificações em arquivos java e javascript nas segundas-feiras. A figura 3 mostra as distribuições de cada uma das linguagens e mostra o quanto as distribuições são discrepantes, o gráfico de javascript é mais "esticado" do que o de java, o que indica que os valores são mais dispersos e não se concentram em torno de um valor comum. Olhando para os gráficos, 75% dos valores de javascript estão abaixo de 8600 acessos, isso quer dizer que houveram segundas-feiras em que o número de acessos chegou próximo desse valor, enquanto que para java 75% dos valores estão abaixo de 4500.As medianas de ambos os gráficos são bem diferentes, a de java é bem menor que a de javascript. 
 
-Os gráficos da Figura 3 suferem que há uma diferença entre programar em java e javascript nas segundas-feiras.
+Através dos gráficos da Figura 3 é póssível perceber que há uma diferença entre programar em java e javascript nas segundas-feiras.
 
 ```{r fig.align='center', fig.cap="Figura 3 - Comparação entre as distribuições de java e javascript para a segunda-feira"}
 git_languages_data1 %>% 
@@ -128,19 +137,78 @@ git_languages_data1 %>%
   labs(x = "", y = "Total de modificações")
 ```
 
+Como a amostra é representativa da população, é possível a partir dela encontrar estimativas para saber se os usuários são mais prováveis de programar em java ou javascript na segunda-feira de forma geral. Para isso, é necessário escolher um valor que possa ser comparado entre as diferentes subamostras de java e javascript para modificações feitas em segundas-feiras. Um parâmetro que pode ser usado é a [mediana](https://pt.wikipedia.org/wiki/Mediana_(estat%C3%ADstica)) que é o valor que divide uma sequência de números igualmente em duas partes. Como o conjunto de dados utilizados é apenas uma amostra da população, será necessário encontrar um intervalo em que as medianas de cada subamostra de java e javascript
+estejam em 95% dos casos do bootstrap. A Figura 4 mostra o intervalo de confiança em que se pode encontrar a mediana para a subamostra de javascript e a Figura 5 para a de java.
 
-```{r, fig.align='center', fig.cap="Figura 4 - Amostra de um bootstrap para javascript"}
-
+```{r}
 set.seed(123)
 b1 = git_languages_data1 %>% filter(file_extension %in% c("js")) %>%
   bootstrap(median(users))
+quantile(filter(git_languages_data1, file_extension %in% c("js"))$users, 
+         probs = c(.05, .95))
+```
+
+```{r, fig.align='center', fig.cap="Figura 4 - Intervalo de confiança da mediana para a amostra de javascript"}
 plot_ic(b1)
 ```
 
-```{r, fig.align='center', fig.cap="Figura 7 - Bootstrap das medianas para os dados das modificações em arquivos .js no fim de semana"}
 
-b1 = git_languages_data1 %>% filter(file_extension %in% c("java")) %>%
+```{r}
+b2 = git_languages_data1 %>% filter(file_extension %in% c("java")) %>%
   bootstrap(median(users))
-plot_ic(b1)
+quantile(filter(git_languages_data1, file_extension %in% c("java"))$users, 
+         probs = c(.05, .95))
 ```
+
+```{r, fig.align='center', fig.cap="Figura 5 - Intervalo de confiança da mediana para a amostra de java"}
+plot_ic(b2)
+```
+
+Os intervalos de uma para a outra são bem diferentes conforme a Figura 6. Eles não se encontram e os valores de javascript são bem maiores que os de java. Ora, se os intervalos onde as medianas tem grande chance de acontecer baseado nos valores da amostra não se cruzam e possuem uma distância considerável, então há indícios de que java e javascript são usadas de formas diferentes pelos programadores em segundas-feiras e a popularidade de cada uma pode ser o motivo.
+É mais provável que haja programação em javascript, ou seja, a popularidade dela é maior que a de java quando se trata de programar nas segundas-feiras.
+
+```{r, warning=FALSE, fig.align='center', fig.cap="Figura 6 - Comparação entre os intervalos de confiança das medianas das amostras das modificações feitas em segundas-feiras para java e javascript"}
+
+median.javascript = b1 %>% 
+  CI.percentile(probs = c(.025, .975))
+
+median.java = b2 %>% 
+  CI.percentile(probs = c(.025, .975))
+ 
+df.median = cbind(language=c("java", "javascript"), 
+                  data.frame(rbind(median.java, median.javascript)))
+
+df.median %>%
+  ggplot(aes(x = language, ymin = X2.5., ymax = X97.5.)) + 
+  geom_errorbar(width = .2) +
+  labs(x = "Intervalos de confiança", y = "Percentis")
+
+
+kable(df.median)
+```
+
+A Figura 7 mostra o intervalo de confiança para a diferença entre as duas amostras. A diferença entre os parâmetros obtidos no bootstrap de duas amostras mostra o quão diferentes os valores de cada uma são. Isso mostra indícios de que há uma diferença na forma como os programadores escolhem programar na segunda-feira em relação a java e javascript. Pelos gráficos da figura 7 e das figuras 6 e comparando os gráficos das figuras 4 e 5, javascript é mais provável de ser escolhida para programação por ser mais popular nas segundas-feiras pois os dados mostram que os usuários modificam mais arquivos .js do que arquivos .java.
+
+```{r, fig.align='center', fig.cap="Figura 7 - Intervalo de confiança da diferença para javascript"}
+# Agora a diferença das médias
+java_sample <- git_languages_data1 %>% filter(file_extension %in% c("java"))
+javascript_sample <- git_languages_data1 %>% filter(file_extension %in% c("js"))
+
+b.diff.median = bootstrap2(data = javascript_sample$users, 
+                           data2 = java_sample$users,
+                          median)
+
+median.diff = CI.percentile(b.diff.median, probs = c(.025, .975))
+median.diff
+
+data.frame(median.diff) %>% 
+  ggplot(aes(x = "", ymin = X2.5., ymax = X97.5.)) + 
+  geom_errorbar(width = .2) + 
+  geom_hline(yintercept = 0, colour = "darkorange")+
+  labs(x = "Intervalo de confiança", y = "Percentis")
+```
+
+Para a segunda pergunta é necessário usar um outro parâmetro, o [desvio padrão](https://pt.wikipedia.org/wiki/Desvio_padr%C3%A3o) que indica o quão distantes os valores estão da média, o quanto os dados são espalhados, longe uns dos outros. Nesta parte mais quatro subamostras foram geradas que são as subamostras modificações feitas em java e javascript tanto pra quarta quanto para a sexta
+
+
 ## Considerações finais
