@@ -3,7 +3,7 @@ plot_median_ic = function(data){
     CI.percentile(probs = c(.025, .975))
   
   df.median = data.frame(median.monday)
-  View(data)
+
   data.frame(data$replicates)%>% 
     ggplot(aes(x=median.users.)) +
     geom_histogram(binwidth = 10, colour = "#6ba82f", fill = "darkgreen") + 

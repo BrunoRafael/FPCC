@@ -259,24 +259,91 @@ df.sd %>%
   labs(x = "Intervalos de confiança", y = "Percentis")
 
 
-kable(df.median)
+kable(df.sd)
 ```
 
-```{r, fig.align='center', fig.cap="Figura 10 - Intervalo de confiança da diferença para python das modificações feitas na quarta-feira e na sexta-feira"}
+```{r, fig.align='center', fig.cap="Figura 11 - Intervalo de confiança da diferença para python das modificações feitas na quarta-feira e na sexta-feira"}
 # Agora a diferença das médias
 
-b.diff.sd = bootstrap2(data = python_quarta$users, 
+b.diff_py.sd = bootstrap2(data = python_quarta$users, 
                            data2 = python_sexta$users,
                           sd)
 
-sd.diff = CI.percentile(b.diff.sd, probs = c(.025, .975))
-sd.diff
-
-data.frame(sd.diff) %>% 
+sd.diff_py = CI.percentile(b.diff_py.sd, probs = c(.025, .975))
+sd.diff_py
+py_diff <- data.frame(sd.diff_py)
+py_diff %>% 
   ggplot(aes(x = "", ymin = X2.5., ymax = X97.5.)) + 
   geom_errorbar(width = .2) + 
   geom_hline(yintercept = 0, colour = "darkorange")+
   labs(x = "Intervalo de confiança", y = "Percentis")
+```
+
+```{r}
+m1 = mark_quarta%>%bootstrap(sd(users))
+quantile(mark_quarta$users, probs = c(.05, .95))
+```
+
+```{r, fig.align='center', fig.cap="Figura 12 - Intervalo de confiança da diferença para python nas quartas-feiras"}
+plot_sd_ic(m1)
+```
+
+```{r}
+m2 = mark_sexta%>%bootstrap(sd(users))
+quantile(mark_sexta$users, probs = c(.05, .95))
+```
+
+```{r, fig.align='center', fig.cap="Figura 13 - Intervalo de confiança da diferença para python nas quartas-feiras"}
+plot_sd_ic(m2)
+```
+
+
+```{r, warning=FALSE, fig.align='center', fig.cap="Figura 14 - Comparação entre os intervalos de confiança dos desvios padrões das amostras de python"}
+
+sd.mark_quarta = m1 %>% 
+  CI.percentile(probs = c(.025, .975))
+
+sd.mark_sexta = m2 %>% 
+  CI.percentile(probs = c(.025, .975))
+ 
+df.sd = cbind(days=c("Quarta-feira ", "Sexta-feira"), 
+                  data.frame(rbind(sd.mark_quarta, sd.mark_sexta)))
+
+df.sd %>%
+  ggplot(aes(x = days, ymin = X2.5., ymax = X97.5.)) + 
+  geom_errorbar(width = .2) +
+  labs(x = "Intervalos de confiança", y = "Percentis")
+
+
+kable(df.sd)
+```
+
+```{r, fig.align='center', fig.cap="Figura 15 - Intervalo de confiança da diferença para python das modificações feitas na quarta-feira e na sexta-feira"}
+# Agora a diferença das médias
+
+b.diff_mark.sd = bootstrap2(data = mark_quarta$users, 
+                           data2 = mark_sexta$users,
+                          sd)
+
+sd.diff_mark = CI.percentile(b.diff_mark.sd, probs = c(.025, .975))
+sd.diff_mark
+
+mark_diff <- data.frame(sd.diff_mark)
+mark_diff %>% 
+  ggplot(aes(x = "", ymin = X2.5., ymax = X97.5.)) + 
+  geom_errorbar(width = .2) + 
+  geom_hline(yintercept = 0, colour = "darkorange")+
+  labs(x = "Intervalo de confiança", y = "Percentis")
+```
+
+```{r, fig.align='center', fig.cap="Figura 16 - Intervalo de confiança da diferença para python das modificações feitas na quarta-feira e na sexta-feira"}
+df.sd = cbind(days=c("Python", "Markdown"), 
+                  data.frame(rbind(py_diff, mark_diff)))
+
+df.sd %>%
+  ggplot(aes(x = days, ymin = X2.5., ymax = X97.5.)) + 
+  geom_errorbar(width = .2) +
+  labs(x = "Intervalos de confiança", y = "Percentis")
 ```
 
 ## Considerações finais
