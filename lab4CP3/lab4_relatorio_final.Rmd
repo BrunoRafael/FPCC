@@ -67,7 +67,7 @@ Basicamente, serão respondidas algumas perguntas sobre as linguagens que os usu
 
 Na segunda feira é mais provável que os usuários programem em java ou javascript?
 
-Existe uma diferença significativa de variação do número de modificações nos arquivos das duas linguagens quando se compara a quarta com a sexta?
+Existe uma diferença significativa de variação do número de modificações nos arquivos das linguagens python e Markdown quando se compara a quarta com a sexta?
 
 Respondendo a estas perguntas para a amostra de dados utilizada, será possível inferir de forma geral, para todos os usuários do github.
 
@@ -149,7 +149,7 @@ quantile(filter(git_languages_data1, file_extension %in% c("js"))$users,
 ```
 
 ```{r, fig.align='center', fig.cap="Figura 4 - Intervalo de confiança da mediana para a amostra de javascript"}
-plot_ic(b1)
+plot_median_ic(b1)
 ```
 
 
@@ -161,7 +161,7 @@ quantile(filter(git_languages_data1, file_extension %in% c("java"))$users,
 ```
 
 ```{r, fig.align='center', fig.cap="Figura 5 - Intervalo de confiança da mediana para a amostra de java"}
-plot_ic(b2)
+plot_median_ic(b2)
 ```
 
 Os intervalos de uma para a outra são bem diferentes conforme a Figura 6. Eles não se encontram e os valores de javascript são bem maiores que os de java. Ora, se os intervalos onde as medianas tem grande chance de acontecer baseado nos valores da amostra não se cruzam e possuem uma distância considerável, então há indícios de que java e javascript são usadas de formas diferentes pelos programadores em segundas-feiras e a popularidade de cada uma pode ser o motivo.
@@ -208,7 +208,75 @@ data.frame(median.diff) %>%
   labs(x = "Intervalo de confiança", y = "Percentis")
 ```
 
-Para a segunda pergunta é necessário usar um outro parâmetro, o [desvio padrão](https://pt.wikipedia.org/wiki/Desvio_padr%C3%A3o) que indica o quão distantes os valores estão da média, o quanto os dados são espalhados, longe uns dos outros. Nesta parte mais quatro subamostras foram geradas que são as subamostras modificações feitas em java e javascript tanto pra quarta quanto para a sexta
 
+```{r, warning=FALSE}
+py <- git_data_filter %>% filter(file_extension %in% c("py"))
+python_quarta <- py %>% filter(week_day %in% c("quarta-feira"))
+python_sexta <- py %>% filter(week_day %in% c("sexta-feira"))
+
+mark <- git_data_filter %>% filter(file_extension %in% c("md"))
+mark_quarta <- mark %>% filter(week_day %in% c("quarta-feira"))
+mark_sexta <- mark %>% filter(week_day %in% c("sexta-feira"))
+```
+
+Para a segunda pergunta é necessário usar um outro parâmetro, o [desvio padrão](https://pt.wikipedia.org/wiki/Desvio_padr%C3%A3o) que indica o quão distantes os valores estão da média, o quanto os dados são espalhados, longe uns dos outros. Em outras palavras indica o quanto os valores variam. Nesta parte, mais quatro subamostras foram geradas. São as subamostras das modificações feitas em python e Markdown tanto pra quarta quanto para a sexta. 
+
+A Figura 8 e 9 mostra o intervalo de confiança encontrado para a amostra das de arquivos python modificados nas quartas e sextas, respectivamente.
+
+
+```{r}
+p1 = python_quarta%>%bootstrap(sd(users))
+quantile(python_quarta$users, probs = c(.05, .95))
+```
+
+```{r, fig.align='center', fig.cap="Figura 8 - Intervalo de confiança da diferença para python nas quartas-feiras"}
+plot_sd_ic(p1)
+```
+
+```{r}
+p2 = python_sexta%>%bootstrap(sd(users))
+quantile(python_sexta$users, probs = c(.05, .95))
+```
+
+```{r, fig.align='center', fig.cap="Figura 9 - Intervalo de confiança da diferença python nas sextas-feiras"}
+plot_sd_ic(p2)
+```
+
+```{r, warning=FALSE, fig.align='center', fig.cap="Figura 10 - Comparação entre os intervalos de confiança dos desvios padrões das amostras de python"}
+
+sd.python_quarta = p1 %>% 
+  CI.percentile(probs = c(.025, .975))
+
+sd.python_sexta = p2 %>% 
+  CI.percentile(probs = c(.025, .975))
+ 
+df.sd = cbind(days=c("Quarta-feira ", "Sexta-feira"), 
+                  data.frame(rbind(sd.python_quarta, sd.python_sexta)))
+
+df.sd %>%
+  ggplot(aes(x = days, ymin = X2.5., ymax = X97.5.)) + 
+  geom_errorbar(width = .2) +
+  labs(x = "Intervalos de confiança", y = "Percentis")
+
+
+kable(df.median)
+```
+
+```{r, fig.align='center', fig.cap="Figura 10 - Intervalo de confiança da diferença para python das modificações feitas na quarta-feira e na sexta-feira"}
+# Agora a diferença das médias
+
+b.diff.sd = bootstrap2(data = python_quarta$users, 
+                           data2 = python_sexta$users,
+                          sd)
+
+sd.diff = CI.percentile(b.diff.sd, probs = c(.025, .975))
+sd.diff
+
+data.frame(sd.diff) %>% 
+  ggplot(aes(x = "", ymin = X2.5., ymax = X97.5.)) + 
+  geom_errorbar(width = .2) + 
+  geom_hline(yintercept = 0, colour = "darkorange")+
+  labs(x = "Intervalo de confiança", y = "Percentis")
+```
 
 ## Considerações finais
