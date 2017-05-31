@@ -13,6 +13,7 @@ library(broom)
 require(GGally, quietly = TRUE)
 library(resample)
 library(plotly)
+source("plot_manager.R")
 theme_set(theme_bw())
 
 formata_label = function(l){
@@ -29,12 +30,12 @@ git_data_filter <- git_data %>% mutate(date = paste(month_day, the_month, the_ye
 
 git_data_filter$week_day <- weekdays(as.Date(git_data_filter$date))
 
-git_languages_data1  <- git_data_filter %>% 
+git_languages_data1  <- git_data_filter %>%
   filter(file_extension %in% c("js", "java")) %>%
-  filter(week_day %in% c("segunda-feira"))
+  filter(week_day %in% c("segunda"))
 
 git_languages_data2  <- git_data_filter %>% 
-  filter(week_day %in% c("quarta-feira", "sexta-feira")) %>%
+  filter(week_day %in% c("quarta", "sexta")) %>%
   filter(file_extension %in% c("py", "md"))
 ```
 
@@ -117,7 +118,7 @@ Para responder a primeira pergunta, é necessário saber como se comportam o nú
 Os gráficos da Figura 3 suferem que há uma diferença entre programar em java e javascript nas segundas-feiras.
 
 ```{r fig.align='center', fig.cap="Figura 3 - Comparação entre as distribuições de java e javascript para a segunda-feira"}
-git_languages_data1 %>%
+git_languages_data1 %>% 
   group_by(date, file_extension) %>%
   summarise(sum = sum(users)) %>%
   ggplot(aes(x="", y=sum)) + 
@@ -125,30 +126,21 @@ git_languages_data1 %>%
   geom_point(position = position_jitter(h=0,w=0.3),alpha=0.4) +
   facet_grid(.~file_extension)+
   labs(x = "", y = "Total de modificações")
-
 ```
 
+
+```{r, fig.align='center', fig.cap="Figura 4 - Amostra de um bootstrap para javascript"}
+
+set.seed(123)
+b1 = git_languages_data1 %>% filter(file_extension %in% c("js")) %>%
+  bootstrap(median(users))
+plot_ic(b1)
+```
 
 ```{r, fig.align='center', fig.cap="Figura 7 - Bootstrap das medianas para os dados das modificações em arquivos .js no fim de semana"}
 
-git_js_weekend <- git_data_filter %>% 
-  filter(file_extension == "js") %>%
-  filter(week_day %in% c("sábado", "domingo"))
-
-b1 = git_js_weekend %>% 
+b1 = git_languages_data1 %>% filter(file_extension %in% c("java")) %>%
   bootstrap(median(users))
-
-median.weekend = b1 %>% 
-  CI.percentile(probs = c(.025, .975))
-
-df.median = data.frame(median.weekend)
-data.frame(b1$replicates)%>% 
-  ggplot(aes(x=median.users.)) +
-  geom_histogram(binwidth = 10, colour = "darkorange", fill = "white") + 
-  geom_vline(aes(xintercept = df.median$X2.5.), colour = "blue") + 
-  geom_vline(aes(xintercept = df.median$X97.5.), colour = "blue") + 
-  geom_vline(aes(xintercept = b1$observed), colour = "green")+
-  labs(x = "distribuição das medianas das amostras", y = "Frequência de medianas")
+plot_ic(b1)
 ```
-
 ## Considerações finais
