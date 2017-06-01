@@ -60,7 +60,7 @@ A **variância da população** e a **mediana da população** quando calculadas
 
 Uma amostra gerada a partir da amostra principal usada nessa pesquisa, será chamada de subamostra. O processo de gerar várias subamostras para calcular a distribuição dos parâmetros(variância ou mediana) amostrais será chamado de **bootstrap**
 
-*NOTA: Algumas perguntas feitas na parte 2 deste lab não foram bem elaboradas. Para tornar essa parte mais interessante foi ncessário que eu modificasse uma das perguntas que fiz. A pergunta 2 desta pesquisa não está na entrega 2 do lab.*
+A quarta-feira foi escolhida por ser um dia no meio da semana em que as atividades geralmente são intensas e a sexta-feira é o dia em que as pessoas geralmente descansam então por isso estes dois dias foram escolhidos, por serem discrepantes em relação a forma de trabalho dos programadores.
 
 ## Introdução
 Basicamente, serão respondidas algumas perguntas sobre as linguagens que os usuários mais programam em diferentes dias da semana levando em consideração as alterações feitas em seus repositórios. Por exemplo, é mais divertido programar usando python ou Markdown em uma sexta-feira? O que podemos inferir de forma geral a respeito disso? As perguntas respondidas serão as seguintes:
@@ -112,12 +112,12 @@ O gráfico também mostra que 75% dos valores dos totais de alterações feitas 
 
 Conforme o gráfico da Figura 2, que vimos na parte 1 da pesquisa, os arquivos que mais possuem alterações no git, são arquivos com extensão md. Estes arquivos são extensões do RMarkdown que é um pacote usado com a linguagem R para formatação de documentos para visualização de resultados de pesquisas usando o R. Os arquivos .js são o segundo mais modificado.
 
-```{r, fig.align='center', fig.cap="Figura 2 - Frequência de acesso por arquivo", echo=FALSE}
+```{r, fig.align='center', fig.cap="Figura 2 - Frequência de modificações em cada tipo de arquivo", echo=FALSE}
 git_data %>% group_by(file_extension) %>% 
 summarise(sum = sum(users)) %>%
 ggplot(aes(x = reorder(as.factor(file_extension), sum), y = sum)) + 
 geom_point(color = "darkblue", stat = "identity") +
-labs(x="Extensão do arquivo", y = "Nº de alterações durante os dois anos avaliados")+
+labs(x="Extensão do arquivo", y = "Nº de alterações")+
 scale_y_continuous(labels = formata_label)+
 coord_flip()
 ```
@@ -126,7 +126,7 @@ Para responder a primeira pergunta, é necessário saber como se comportam o nú
 
 Através dos gráficos da Figura 3 é póssível perceber que há uma diferença entre programar em java e javascript nas segundas-feiras.
 
-```{r fig.align='center', fig.cap="Figura 3 - Comparação entre as distribuições de java e javascript para a segunda-feira"}
+```{r fig.align='center', fig.cap="Figura 3 - Comparação entre as distribuições de java e javascript em segundas-feiras"}
 git_languages_data1 %>% 
   group_by(date, file_extension) %>%
   summarise(sum = sum(users)) %>%
@@ -134,7 +134,7 @@ git_languages_data1 %>%
   geom_boxplot(alpha = 0.4, color="darkblue")+
   geom_point(position = position_jitter(h=0,w=0.3),alpha=0.4) +
   facet_grid(.~file_extension)+
-  labs(x = "", y = "Total de modificações")
+  labs(x = "", y = "Nº de modificações")
 ```
 
 Como a amostra é representativa da população, é possível a partir dela encontrar estimativas para saber se os usuários são mais prováveis de programar em java ou javascript na segunda-feira de forma geral. Para isso, é necessário escolher um valor que possa ser comparado entre as diferentes subamostras de java e javascript para modificações feitas em segundas-feiras. Um parâmetro que pode ser usado é a [mediana](https://pt.wikipedia.org/wiki/Mediana_(estat%C3%ADstica)) que é o valor que divide uma sequência de números igualmente em duas partes. Como o conjunto de dados utilizados é apenas uma amostra da população, será necessário encontrar um intervalo em que as medianas de cada subamostra de java e javascript
@@ -148,7 +148,7 @@ quantile(filter(git_languages_data1, file_extension %in% c("js"))$users,
          probs = c(.05, .95))
 ```
 
-```{r, fig.align='center', fig.cap="Figura 4 - Intervalo de confiança da mediana para a amostra de javascript"}
+```{r, fig.align='center', fig.cap="Figura 4 - Intervalo de confiança da mediana para o bootstrap da amostra de javascript"}
 plot_median_ic(b1)
 ```
 
@@ -160,14 +160,14 @@ quantile(filter(git_languages_data1, file_extension %in% c("java"))$users,
          probs = c(.05, .95))
 ```
 
-```{r, fig.align='center', fig.cap="Figura 5 - Intervalo de confiança da mediana para a amostra de java"}
+```{r, fig.align='center', fig.cap="Figura 5 - Intervalo de confiança da mediana para o bootstrap da amostra de java"}
 plot_median_ic(b2)
 ```
 
 Os intervalos de uma para a outra são bem diferentes conforme a Figura 6. Eles não se encontram e os valores de javascript são bem maiores que os de java. Ora, se os intervalos onde as medianas tem grande chance de acontecer baseado nos valores da amostra não se cruzam e possuem uma distância considerável, então há indícios de que java e javascript são usadas de formas diferentes pelos programadores em segundas-feiras e a popularidade de cada uma pode ser o motivo.
 É mais provável que haja programação em javascript, ou seja, a popularidade dela é maior que a de java quando se trata de programar nas segundas-feiras.
 
-```{r, warning=FALSE, fig.align='center', fig.cap="Figura 6 - Comparação entre os intervalos de confiança das medianas das amostras das modificações feitas em segundas-feiras para java e javascript"}
+```{r, warning=FALSE, fig.align='center', fig.cap="Figura 6 - Comparação entre os intervalos de confiança das medianas das modificações feitas em segundas-feiras para java e javascript"}
 
 median.javascript = b1 %>% 
   CI.percentile(probs = c(.025, .975))
@@ -189,7 +189,7 @@ kable(df.median)
 
 A Figura 7 mostra o intervalo de confiança para a diferença entre as duas amostras. A diferença entre os parâmetros obtidos no bootstrap de duas amostras mostra o quão diferentes os valores de cada uma são. Isso mostra indícios de que há uma diferença na forma como os programadores escolhem programar na segunda-feira em relação a java e javascript. Pelos gráficos da figura 7 e das figuras 6 e comparando os gráficos das figuras 4 e 5, javascript é mais provável de ser escolhida para programação por ser mais popular nas segundas-feiras pois os dados mostram que os usuários modificam mais arquivos .js do que arquivos .java.
 
-```{r, fig.align='center', fig.cap="Figura 7 - Intervalo de confiança da diferença para javascript"}
+```{r, fig.align='center', fig.cap="Figura 7 - Intervalo de confiança da diferença entre as amostras de java e javascript "}
 # Agora a diferença das médias
 java_sample <- git_languages_data1 %>% filter(file_extension %in% c("java"))
 javascript_sample <- git_languages_data1 %>% filter(file_extension %in% c("js"))
@@ -208,20 +208,21 @@ data.frame(median.diff) %>%
   labs(x = "Intervalo de confiança", y = "Percentis")
 ```
 
-
 ```{r, warning=FALSE}
 py <- git_data_filter %>% filter(file_extension %in% c("py"))
-python_quarta <- py %>% filter(week_day %in% c("quarta-feira"))
-python_sexta <- py %>% filter(week_day %in% c("sexta-feira"))
+python_quarta <- py %>% filter(week_day %in% c("quarta", "quarta-feira"))
+python_sexta <- py %>% filter(week_day %in% c("sexta", "sexta-feira"))
 
 mark <- git_data_filter %>% filter(file_extension %in% c("md"))
-mark_quarta <- mark %>% filter(week_day %in% c("quarta-feira"))
-mark_sexta <- mark %>% filter(week_day %in% c("sexta-feira"))
+mark_quarta <- mark %>% filter(week_day %in% c("quarta", "quarta-feira"))
+mark_sexta <- mark %>% filter(week_day %in% c("sexta", "sexta-feira"))
 ```
+
 
 Para a segunda pergunta é necessário usar um outro parâmetro, o [desvio padrão](https://pt.wikipedia.org/wiki/Desvio_padr%C3%A3o) que indica o quão distantes os valores estão da média, o quanto os dados são espalhados, longe uns dos outros. Em outras palavras indica o quanto os valores variam. Nesta parte, mais quatro subamostras foram geradas. São as subamostras das modificações feitas em python e Markdown tanto pra quarta quanto para a sexta. 
 
-A Figura 8 e 9 mostra o intervalo de confiança encontrado para a amostra das de arquivos python modificados nas quartas e sextas, respectivamente.
+##Avaliando as amostras de python
+A Figura 8 e 9 mostra o intervalo de confiança encontrado para a amostras de arquivos python nos dias considerados.
 
 
 ```{r}
@@ -229,7 +230,7 @@ p1 = python_quarta%>%bootstrap(sd(users))
 quantile(python_quarta$users, probs = c(.05, .95))
 ```
 
-```{r, fig.align='center', fig.cap="Figura 8 - Intervalo de confiança da diferença para python nas quartas-feiras"}
+```{r, fig.align='center', fig.cap="Figura 8 - Distribuição dos desvios padrão da amostra de python para a quarta feira"}
 plot_sd_ic(p1)
 ```
 
@@ -242,7 +243,9 @@ quantile(python_sexta$users, probs = c(.05, .95))
 plot_sd_ic(p2)
 ```
 
-```{r, warning=FALSE, fig.align='center', fig.cap="Figura 10 - Comparação entre os intervalos de confiança dos desvios padrões das amostras de python"}
+Ao comparar os intervalos de confiança das duas amostras é notável que os intervalos são muito semelhantes e que provavelmente não há diferenã de variação entres os dois dias considerados, ou seja, para python tanto na quarta quantona sexta os programadores programam da mesma forma.
+
+```{r, warning=FALSE, fig.align='center', fig.cap="Figura 10 - Comparação entre os intervalos de confiança dos desvios padrão das amostras de python"}
 
 sd.python_quarta = p1 %>% 
   CI.percentile(probs = c(.025, .975))
@@ -262,6 +265,8 @@ df.sd %>%
 kable(df.sd)
 ```
 
+Estimando o intervalo de confiança para a distribuição das diferenças entre os desvios padrão das amostras do bootstrap, o intervalo resultante contém zero e por isso há possibilidade de que não haja diferença nenhuma entre as variações das duas amostras, ou seja, há indícios de que a forma de programar dos desenvolvedores que usam python é a mesma nesses dois dias da semana, não há uma intensificação do trabalho usando a linguagem em um dia e uma queda no outro. Isso também sugere que a popularidade de python pode ser a mesma na quarta e na sexta.
+
 ```{r, fig.align='center', fig.cap="Figura 11 - Intervalo de confiança da diferença para python das modificações feitas na quarta-feira e na sexta-feira"}
 # Agora a diferença das médias
 
@@ -279,6 +284,10 @@ py_diff %>%
   labs(x = "Intervalo de confiança", y = "Percentis")
 ```
 
+##Avaliando as amostras de Markdown
+
+A distribuição de desvios padrão para o bootstrap de ambas as amostras do Markdown segue um formato muito semelhante a uma distribuição normal conforme Figura 12 e 13.
+
 ```{r}
 m1 = mark_quarta%>%bootstrap(sd(users))
 quantile(mark_quarta$users, probs = c(.05, .95))
@@ -293,12 +302,12 @@ m2 = mark_sexta%>%bootstrap(sd(users))
 quantile(mark_sexta$users, probs = c(.05, .95))
 ```
 
-```{r, fig.align='center', fig.cap="Figura 13 - Intervalo de confiança da diferença para python nas quartas-feiras"}
+```{r, fig.align='center', fig.cap="Figura 13 - Intervalo de confiança da diferença para python nas sextas-feiras"}
 plot_sd_ic(m2)
 ```
 
-
-```{r, warning=FALSE, fig.align='center', fig.cap="Figura 14 - Comparação entre os intervalos de confiança dos desvios padrões das amostras de python"}
+Para o Markdown algo semelhante acontece ao se comparar os intervalos encontrados para as duas amostras. Eles não se sobrepoem como os de python mas ainda sim se sobrepõem conforme a Figura 14. Ora, se os intervalos estão contidos um no outro então os desvios de ambas podem ser iguais e se os desvios forem iguais, as variações também podem ser iguais. É por isso que assim como python, há indícios de que a variação do número de acessos para as duas amostras pode ser igual, assim como a popularidade é a mesma nos dois dias para esta linguagem segundo indícios encontrados na amostra. O que se pode concluir? Que há uma chance considerável de não haver diferença nenhuma no modo como os desenvolvedores trabalham na quarta e na sexta com Markdown.  
+```{r, warning=FALSE, fig.align='center', fig.cap="Figura 14 - Comparação entre os intervalos de confiança dos desvios padrão das amostras de Markdown"}
 
 sd.mark_quarta = m1 %>% 
   CI.percentile(probs = c(.025, .975))
@@ -318,7 +327,9 @@ df.sd %>%
 kable(df.sd)
 ```
 
-```{r, fig.align='center', fig.cap="Figura 15 - Intervalo de confiança da diferença para python das modificações feitas na quarta-feira e na sexta-feira"}
+Ao verificar o intervalo de confiança da distribuição das diferenças é possível ver isso melhor, conforme a Figura 15. O valor zero está no intervalo e por isso pode não haver diferença entre as variações das amostras que indica uma baixa diferença apoiando os gráficos anteriores.
+
+```{r, fig.align='center', fig.cap="Figura 15 - Intervalo de confiança da diferença para modificações feitas na quarta-feira e na sexta-feira em arquivos de Markdown"}
 # Agora a diferença das médias
 
 b.diff_mark.sd = bootstrap2(data = mark_quarta$users, 
@@ -336,7 +347,9 @@ mark_diff %>%
   labs(x = "Intervalo de confiança", y = "Percentis")
 ```
 
-```{r, fig.align='center', fig.cap="Figura 16 - Intervalo de confiança da diferença para python das modificações feitas na quarta-feira e na sexta-feira"}
+Para encerrar e responder a segunda pergunta, através da figura 16 é possível comparar os intervalos de confiança das diferenças calculados para as duas linguagens. Em outras palavras, na figura 16 estão os intervalos das figuras 11 e 15. O intervalo de python é bem mais "concentrado" do que o de Markdown, se sobrepõem e em ambos o zero está contido. Por isso é possível que os valores reais da população se aproximem de zero ou sejam iguais. Se isso é verdade entãoas amostras de Markdown e as de python podem variar de forma igual e isso responde a segunda pergunta, ou seja, há indícios de que não há diferença significativa na variação do número de alterações considerando os dois dias.
+
+```{r, fig.align='center', fig.cap="Figura 16 - Intervalos de confiança das diferenças encontradas nas amostras de python e markdown"}
 df.sd = cbind(days=c("Python", "Markdown"), 
                   data.frame(rbind(py_diff, mark_diff)))
 
@@ -347,3 +360,7 @@ df.sd %>%
 ```
 
 ## Considerações finais
+
+Diante das informações apresentadas, é possível responder as perguntas formuladas. Para a primeira pergunta quais das duas linguagens java ou javascript é mais provável de ser usada pelos programadores em uma segunda-feira a resposta é que há indícios de que não são iguais as chances de ambas e que javascript é mais popular e que há maior chance de ser usada. Para a segunda, a variação no número de modificações feitas em Markdown e em python é semelhante ao comparar um dia com o outro. Ou seja, a vontade de programar em python é semelhante que em Markdown na quarta e na sexta.
+
+Com isso, a inferência para a população pode ser feita, ou seja, de forma geral envolvendo todos os usuários do github, é mais provável que em uma segunda-feira haja desenvolvimento usando javascript do que java! Já em relação a python e Markdown, há indícios de que a forma de programar é a mesma para as duas linguagens se comparado a quarta-feira com a sexta-feira.
